@@ -1,0 +1,12 @@
+Prerequisites:
+
+ - Python 2.3+, Numeric, Pyrex
+ - python-bio-tolls in PYTHONPATH at runtime
+ - Pypar to use rp_adapt_mpi
+
+Install:
+
+  Distutils can be used as usual (python setup.py) or just type 
+  'make inplace' to build the extension models in place. Make test
+  to verify some things (just training/scoring with the standard 
+  model at the moment).
