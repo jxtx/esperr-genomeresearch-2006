@@ -1,4 +1,4 @@
-import unittest, maf
+import unittest, align, align.maf as maf
 
 from StringIO import StringIO
 
@@ -13,7 +13,6 @@ class MAFTestCase( unittest.TestCase ):
         a = reader.next()
         assert a.score == "0.128"
         assert len( a.components ) == 3
-        print a
         check_component( a.components[0], "human_hoxa", 100, 8,  "+", 100257, "ACA-TTACT" )
         check_component( a.components[1], "horse_hoxa", 120, 9, "-",  98892, "ACAATTGCT" )
         check_component( a.components[2], "fugu_hoxa",    88, 7,  "+",  90788, "ACA--TGCT" )
@@ -35,11 +34,11 @@ class MAFTestCase( unittest.TestCase ):
         val = StringIO()
         writer = maf.Writer( val, { 'scoring':'foobar' } )
         
-        a = maf.Alignment()
+        a = align.Alignment()
         a.score = "7009"
 
-        a.components.append( maf.Component( src="human_hoxa", start=100, size=9,  strand="+", src_size=1000257, text="ACA-TTACT" ) )
-        a.components.append( maf.Component( src="horse_hoxa", start=120, size=10, strand="-",   src_size=98892, text="ACAATTGCT" ) )
+        a.components.append( align.Component( src="human_hoxa", start=100, size=9,  strand="+", src_size=1000257, text="ACA-TTACT" ) )
+        a.components.append( align.Component( src="horse_hoxa", start=120, size=10, strand="-",   src_size=98892, text="ACAATTGCT" ) )
 
         check_component( a.components[0], "human_hoxa", 100, 9,  "+", 1000257, "ACA-TTACT" )
         check_component( a.components[1], "horse_hoxa", 120, 10, "-",   98892, "ACAATTGCT" )
@@ -55,10 +54,10 @@ s horse_hoxa 120 10 -   98892 ACAATTGCT
 
     def test_slice( self ):
 
-        a = maf.Alignment()
+        a = align.Alignment()
         a.score = "7009"
-        a.components.append( maf.Component( src="human_hoxa", start=100, size=9,  strand="+", src_size=100257, text="ACA-TTACT" ) )
-        a.components.append( maf.Component( src="horse_hoxa", start=120, size=10, strand="-",   src_size=98892, text="ACAATTGCT" ) )
+        a.components.append( align.Component( src="human_hoxa", start=100, size=9,  strand="+", src_size=100257, text="ACA-TTACT" ) )
+        a.components.append( align.Component( src="horse_hoxa", start=120, size=10, strand="-",   src_size=98892, text="ACAATTGCT" ) )
     
         b = a.slice_by_component( 0, 101, 105 )
 
