@@ -30,12 +30,12 @@ print "I am node %d of %d" % ( node_id, nodes )
 
 # Things that shouldn't be hardcoded'
 stop_size = 5
-fold = 5
-passes = 5
-order = 1
+fold = 10
+passes = 10
+order = 2
 model = rp.models.averaging
 
-def run( pos_file, neg_file, out_dir, format, mapping ):
+def run( pos_file, neg_file, out_dir, format, align_count, mapping ):
 
     # Open merit output
     merit_out = open( os.path.join( out_dir, 'merits.txt' ), 'w' )
@@ -93,13 +93,10 @@ def run( pos_file, neg_file, out_dir, format, mapping ):
         
             # Write best mapping to a file
             mapping_out = open( os.path.join( out_dir, "%03d.mapping" % symbol_count ), 'w' )
-            for i, symbol in enumerate( best_mapping.get_table() ): 
+            for i, symbol in enumerate( mapping.get_table() ): 
                 print >>mapping_out, str.join( '', rp.mapping.DNA.reverse_map( i, align_count ) ), symbol
             mapping_out.close()
 
-    # Clean up
-    pypar.finalize()
-        
 def all_pairs( n ):
     rval = []
     for i in range( 0, n ):
@@ -130,7 +127,10 @@ def main():
     #except:
     #    cookbook.doc_optparse.exit()
 
-    run( open( pos_fname ), open( neg_fname ), out_dir, options.format, align_count, mapping )
+    try:
+        run( open( pos_fname ), open( neg_fname ), out_dir, options.format, align_count, mapping )
+    finally:
+        pypar.finalize()
 
 
 if __name__ == "__main__": main()
