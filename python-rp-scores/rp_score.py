@@ -11,23 +11,24 @@ usage: %prog data score_matrix out [options]
 """
 
 import align.maf
-import alphabet
 import array
 import cookbook.doc_optparse
 import sys
 import traceback
 
-from rp import io, standard_model
+import rp.io
+import rp.mapping
+import rp.standard_model
 
 def run( data_file, model_file, out_file, format, mapping ):
 
     # Read model
-    model = standard_model.from_file( model_file )
+    model = rp.standard_model.from_file( model_file )
     order = model.get_order()
     radix = model.get_radix()
 
     # Read integer sequences
-    strings = io.get_reader( open( data_fname ), format, mapping )
+    strings = rp.io.get_reader( open( data_fname ), format, mapping )
 
     # Score each
     for string in strings:
@@ -41,7 +42,7 @@ def main():
         options, args = cookbook.doc_optparse.parse( __doc__ )
         data_fname, model_fname, out_fname = args
         if options.mapping:
-            mapping = alphabet.Mapping( file( options.mapping ) )
+            mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
         else:
             mapping = None
     except:

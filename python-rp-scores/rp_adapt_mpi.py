@@ -26,13 +26,12 @@ nodes = pypar.size()
 node_id = pypar.rank() 
 print "I am node %d of %d" % ( nodes, node_id )
 
-STOP_SIZE = 5
-
+# Things that shouldn't be hardcoded'
+stop_size = 5
 fold = 5
 passes = 5
-
-# FIXME: these should not be hardcoded, switch to 'averaging' strategy
 order = 1
+# FIXME: switch to 'averaging' strategy
 model = standard_model
 
 def run( pos_file, neg_file, out_dir, format, mapping ):
@@ -61,7 +60,7 @@ def run( pos_file, neg_file, out_dir, format, mapping ):
         lo = node_id * interval_size
         hi = lo + interval_size
         
-        print 'Node %d has interval [%d, %d) ' % ( node_id, lo, hi ) 
+        ## print "Node %d has interval [%d, %d)" % ( node_id, lo, hi ) 
 
         # Find best collapsed mapping in interval
         best_i, best_j, best_merit = None, None, 0

@@ -252,7 +252,7 @@ bool score_string( int order, int radix, real* score_matrix, int* string, int st
 
     if ( valid_tuples > 0 )
     {
-	*rval = score / (real) valid_tuples;
+        *rval = score / (real) valid_tuples;
 	return true;
     }
     else

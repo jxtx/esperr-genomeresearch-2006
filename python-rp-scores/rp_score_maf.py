@@ -10,14 +10,15 @@ usage: %prog data score_matrix out [options]
 """
 
 import align.maf
-import alphabet
 import array
 import cookbook.doc_optparse
 import seq_numarray
 import sys
 import traceback
 
-from rp import io, standard_model
+import rp.io 
+import rp.mapping
+import rp.standard_model
 
 def run( data_file, model_file, out_file, mapping, window, shift ):
 
@@ -54,7 +55,7 @@ def main():
         window = int( getattr( options, 'window', 100 ) )
         shift = int( getattr( options, 'shift', 5 ) )
         if options.mapping:
-            mapping = alphabet.Mapping( file( options.mapping ) )
+            mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
         else:
             mapping = None
     except:
