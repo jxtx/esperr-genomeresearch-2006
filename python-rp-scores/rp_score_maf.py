@@ -24,7 +24,6 @@ def run( data_file, model_file, out_file, mapping, window, shift ):
 
     # Read model
     model = rp.models.standard.from_file( model_file )
-    order = model.get_order()
     radix = model.get_radix()
 
     # Open maf file

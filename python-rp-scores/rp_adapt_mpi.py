@@ -2,7 +2,7 @@
 
 """
 Collapse from a starting alphabet to a series of nested alphabets using
-cross validation as 'merit'.
+cross validation as 'merit'. Uses MPI via pypar. 
 
 usage: %prog pos_data neg_data out_dir [options]
    -f, --format=NAME:  Format of input data. 'ints' by default, or 'maf'

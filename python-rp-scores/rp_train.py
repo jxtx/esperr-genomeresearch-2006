@@ -8,6 +8,7 @@ usage: %prog pos_data neg_data out [options]
    -m, --mapping=FILE: A mapping (alphabet reduction) to apply to each sequence (optional)
    -r, --radix=N:      Radix
    -o, --order=N:      Order
+   -M, --model=name:   Name of model to train (default 'standard')
 """
 
 import align.maf
@@ -18,9 +19,9 @@ import traceback
 
 import rp.io
 import rp.mapping
-import rp.models.standard
+import rp.models
 
-def run( pos_file, neg_file, out_file, format, mapping, radix, order ):
+def run( pos_file, neg_file, out_file, format, mapping, radix, order, modname ):
 
     # Read integer sequences
     pos_strings = list( rp.io.get_reader( pos_file, format, mapping ) )
@@ -30,9 +31,9 @@ def run( pos_file, neg_file, out_file, format, mapping, radix, order ):
     if not radix:
         if mapping: radix = mapping.get_out_size()
         else: radix = max( map( max, pos_strings ) + map( max, neg_strings ) ) + 1
-        
+               
     # Build model
-    model = rp.models.standard.train( order, radix, pos_strings, neg_strings )
+    model = rp.models.get( modname ).train( order, radix, pos_strings, neg_strings )
 
     # Write to out file
     model.to_file( out_file )
@@ -44,8 +45,10 @@ def main():
         options, args = cookbook.doc_optparse.parse( __doc__ )
         pos_fname, neg_fname, out_fname = args
         order = int( getattr( options, 'order' ) )
-        radix = getattr( options, 'radix', None )
-        format = getattr( options, 'format', None )
+        radix = getattr( options, 'radix' )
+        format = getattr( options, 'format' )
+        modname = getattr( options, 'model' )
+        if modname is None: modname = 'standard'
         if options.mapping:
             mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
         else:
@@ -54,7 +57,7 @@ def main():
         cookbook.doc_optparse.exit()
 
     out = open( out_fname, "w" )
-    run( open( pos_fname ), open( neg_fname ), out, format, mapping, radix, order )
+    run( open( pos_fname ), open( neg_fname ), out, format, mapping, radix, order, modname )
     out.close()
 
 if __name__ == "__main__": main()

@@ -8,6 +8,7 @@ usage: %prog data score_matrix out [options]
    -m, --mapping=FILE: A mapping (alphabet reduction) to apply to each sequence (optional)
    -w, --window=N:     Size of window to scroll over sequence
    -s, --shift:        Amount to shift window
+   -M, --model=name:   Name of model to train (default 'standard')
 """
 
 import align.maf
@@ -18,13 +19,12 @@ import traceback
 
 import rp.io
 import rp.mapping
-import rp.models.standard
+import rp.models
 
-def run( data_file, model_file, out_file, format, mapping ):
+def run( data_file, model_file, out_file, format, mapping, modname ):
 
     # Read model
-    model = rp.models.standard.from_file( model_file )
-    order = model.get_order()
+    model = rp.models.get( modname ).from_file( model_file )
     radix = model.get_radix()
 
     # Read integer sequences
@@ -41,6 +41,8 @@ def main():
     try:
         options, args = cookbook.doc_optparse.parse( __doc__ )
         data_fname, model_fname, out_fname = args
+        modname = getattr( options, 'model' )
+        if modname is None: modname = 'standard'
         if options.mapping:
             mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
         else:
@@ -49,7 +51,7 @@ def main():
         cookbook.doc_optparse.exit()
 
     out = open( out_fname, "w" )
-    run( open( data_fname ), open( model_fname ), out, options.format, mapping )
+    run( open( data_fname ), open( model_fname ), out, options.format, mapping, modname )
     out.close()
 
 if __name__ == "__main__": main()
