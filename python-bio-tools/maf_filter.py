@@ -1,16 +1,12 @@
 #!/usr/bin/env python2.3
 
+import psyco_full
+
 import sys
 
 import ranges, sys
 from align import maf
 from optparse import OptionParser
-
-try:
-    import psyco
-    psyco.profile()
-except:
-    pass
 
 def __main__():
 
@@ -26,6 +22,9 @@ def __main__():
     component_count = options.component_count
     min_cols = options.min_cols
     expr = options.expr
+
+    # Compile expression for SPEED
+    if expr: expr = compile( expr, '<expr arg>', 'eval' )
 
     maf_reader = maf.Reader( sys.stdin )
     maf_writer = maf.Writer( sys.stdout )
