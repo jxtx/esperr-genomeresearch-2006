@@ -1,4 +1,5 @@
 from elementtree.ElementTree import ElementTree, Element, parse
+import sys
 
 cdef extern from "Python.h":
     int PyObject_AsReadBuffer(object obj, void **buffer, int *buffer_len) except -1
@@ -17,7 +18,7 @@ cdef extern from "math.h":
 cdef struct Node:
     float* vals
     Node** children
-    
+
 cdef Node* new_node( int radix ):
     cdef Node* node
     cdef int i
@@ -43,7 +44,8 @@ cdef free_node( Node* node, int radix ):
     if node == NULL: return
     for i from 0 <= i < radix: 
         if node.children[i] != NULL:
-            free( node.children[i] )
+            free_node( node.children[i], radix )
+    free( node.children )
     free( node.vals )
     free( node )
     
@@ -53,19 +55,26 @@ cdef int count( int order, int radix, int* s, int slen, Node* root ):
     # First, fill in the order 0 counts
     for i from order <= i < slen:
         symbol = s[i]
+        if symbol < 0: continue
         root.vals[ symbol ] = root.vals[ symbol ] + 1
     # Now fill in progressively longer orders
     for o from 1 <= o <= order:
         for i from order <= i < slen:
             cur = root
             symbol = s[i]
+            if symbol < 0: continue
             # Walk back until next-to-last step
             for j from 1 <= j < o:
-                cur = cur.children[ s[i-j] ]
+                prefix_symbol = s[i-j]
+                if prefix_symbol < 0:
+                    cur = NULL
+                else:
+                    cur = cur.children[ prefix_symbol ]
                 if cur == NULL: break
             if cur == NULL: continue
             # Extend to last node of context and increment
             prefix_symbol = s[i-o]
+            if prefix_symbol < 0: continue
             # Pruning, if we only saw this context N times on the previous pass, don't extend
             if cur.vals[prefix_symbol] < radix:
                 continue
@@ -84,7 +93,8 @@ cdef int fill_in_counts( int order, int radix, Node* counts, strings ):
             return 0
     return 1
 
-cdef to_probs( int radix, Node* node ):
+cdef not_to_probs( int radix, Node* node ):
+    """Laplace version"""
     cdef int i, total, some_zero
     total = 0
     some_zero = 0
@@ -97,6 +107,37 @@ cdef to_probs( int radix, Node* node ):
         if some_zero:
             node.vals[i] = node.vals[i] + 1
         node.vals[i] = node.vals[i] / total
+    for i from 0 <= i < radix:
+        if node.children[i] != NULL:
+            to_probs( radix, node.children[i] )
+
+cdef to_probs( int radix, Node* node ):
+    """Discount Version"""
+    cdef int i, total, some_zero
+    cdef float discount, fudge_zero, fudge_nonzero
+    total = 0
+    num_zero = 0
+    # Determine total and number of zero nodes
+    for i from 0 <= i < radix:
+        if node.vals[i] == 0:
+            num_zero = num_zero + 1
+        else:
+            total = total + node.vals[i]
+    # Spread discount among nodes
+    discount = 1.0 / radix 
+    if num_zero > 0:
+        fudge_zero = discount / num_zero
+        fudge_nonzero = (1-discount)
+    else:
+        fudge_zero = 0
+        fudge_nonzero = 1
+    # Now do probs
+    for i from 0 <= i < radix:
+        if node.vals[i] == 0:
+            node.vals[i] = fudge_zero
+        else:
+            node.vals[i] = ( node.vals[i] / total ) * fudge_nonzero
+    # Recursively visit children        
     for i from 0 <= i < radix:
         if node.children[i] != NULL:
             to_probs( radix, node.children[i] )
@@ -222,25 +263,33 @@ cdef class Model:
         return e
 
     def __dealloc__( self ):
+        # sys.stderr.write( "freeing tree_prned_1.Model\n" ); sys.stderr.flush()
         free_node( self.tree, self.radix )
-    
+
 def train( int order, int radix, pos_strings, neg_strings ):
     cdef Node *pos_node, *neg_node, *scores
     cdef Model rval
+
+    
 
     pos_node = new_node( radix )
     if pos_node == NULL: raise "Malloc failed creating pos root"
     if fill_in_counts( order, radix, pos_node, pos_strings ) == 0:
         raise "Malloc failed, filling in pos counts"
+    
     to_probs( radix, pos_node )
+    
 
     neg_node = new_node( radix )
     if neg_node == NULL: raise "Malloc failed creating neg root"
     if fill_in_counts( order, radix, neg_node, neg_strings ) == 0:
         raise "Malloc failed, filling in neg counts"
+    
     to_probs( radix, neg_node )
+    
 
     scores = to_scores( radix, pos_node, neg_node )
+
     if scores == NULL: raise "Malloc failed build score tree"
 
     free_node( pos_node, radix )
@@ -248,6 +297,8 @@ def train( int order, int radix, pos_strings, neg_strings ):
 
     rval = Model()
     rval.init( order, radix, scores )
+
+    
 
     return rval
 

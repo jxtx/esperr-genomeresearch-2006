@@ -18,8 +18,9 @@ import traceback
 from cookbook.progress_bar import *
 from rp import cv, io
 
-#import rp.models.averaging as model
-import rp.models.tree_pruned_1 as model
+import rp.models.averaging as model
+#import rp.models.tree as model
+#import rp.models.tree_pruned_1 as model
 
 import rp.mapping
 
@@ -60,7 +61,7 @@ def run( pos_file, neg_file, out_dir, format, align_count, mapping ):
                 if merit > best_merit:
                     best_merit = merit
                     best_mapping = collapsed
-                
+	
                 count += 1
                 pb.update_and_print( count, sys.stderr )
                 
@@ -93,11 +94,13 @@ def calc_merit( pos_strings, neg_strings, mapping ):
 
 def max_order( radix ):
     """Determine max order based on size of alphabet"""
-    #if radix <= 4: return 4
-    #elif radix <= 7: return 3
-    #elif radix <= 14: return 2
-    #else: return 1
-    return 5
+    if radix <= 4: return 4
+    elif radix <= 7: return 3
+    elif radix <= 14: return 2
+    else: return 1
+
+def not_max_order( radix ):
+    return 3
 
 def main():
 

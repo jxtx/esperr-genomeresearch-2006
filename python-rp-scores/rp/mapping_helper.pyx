@@ -9,6 +9,7 @@ cdef extern from "Python.h":
 
 from Numeric import zeros
 from math import floor
+import sys
 
 cdef class CharToIntArrayMapping:
     """Mapping for converting strings to int arrays"""
@@ -99,6 +100,7 @@ cdef class IntToIntMapping:
         self.out_size = 0
         
     def __dealloc__( self ):
+        # sys.stderr.write( "freeing mapping_helper.IntToIntMapping\n" ); sys.stderr.flush()
         free( self.table )
 
     def set_mapping( self, int index, int symbol ):

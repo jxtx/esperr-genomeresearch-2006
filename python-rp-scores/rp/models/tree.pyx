@@ -24,7 +24,9 @@ cdef Node* new_node( int radix ):
     node = <Node*> malloc( sizeof( Node ) )
     if node == NULL: return NULL
     node.children = <Node**> malloc( radix * sizeof( Node* ) )
+    if node.children == NULL: return NULL
     node.vals = <float*> malloc( radix * sizeof( float ) )
+    if node.vals == NULL: return NULL
     for i from 0 <= i < radix: 
         node.children[i] = NULL
         node.vals[i] = 0
@@ -43,7 +45,8 @@ cdef free_node( Node* node, int radix ):
     if node == NULL: return
     for i from 0 <= i < radix: 
         if node.children[i] != NULL:
-            free( node.children[i] )
+            free_node( node.children[i], radix )
+    free( node.children )
     free( node.vals )
     free( node )
     
@@ -76,6 +79,7 @@ cdef int fill_in_counts( int order, int radix, Node* counts, strings ):
     return 1
 
 cdef to_probs( int radix, Node* node ):
+    """Laplace version"""
     cdef int i, total, some_zero
     total = 0
     some_zero = 0
@@ -88,6 +92,37 @@ cdef to_probs( int radix, Node* node ):
         if some_zero:
             node.vals[i] = node.vals[i] + 1
         node.vals[i] = node.vals[i] / total
+    for i from 0 <= i < radix:
+        if node.children[i] != NULL:
+            to_probs( radix, node.children[i] )
+
+cdef not_to_probs( int radix, Node* node ):
+    """Discount Version"""
+    cdef int i, total, some_zero
+    cdef float discount, fudge_zero, fudge_nonzero
+    total = 0
+    num_zero = 0
+    # Determine total and number of zero nodes
+    for i from 0 <= i < radix:
+        if node.vals[i] == 0:
+            num_zero = num_zero + 1
+        else:
+            total = total + node.vals[i]
+    # Spread discount among nodes
+    discount = 1.0 / radix 
+    if num_zero > 0:
+        fudge_zero = discount / num_zero
+        fudge_nonzero = (1-discount)
+    else:
+        fudge_zero = 0
+        fudge_nonzero = 1
+    # Now do probs
+    for i from 0 <= i < radix:
+        if node.vals[i] == 0:
+            node.vals[i] = fudge_zero
+        else:
+            node.vals[i] = ( node.vals[i] / total ) * fudge_nonzero
+    # Recursively visit children        
     for i from 0 <= i < radix:
         if node.children[i] != NULL:
             to_probs( radix, node.children[i] )

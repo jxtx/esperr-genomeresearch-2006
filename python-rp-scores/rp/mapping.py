@@ -37,4 +37,10 @@ def alignment_mapping_from_file( f ):
         mapping.set_mapping( index, symbol )
 
     return align_count, mapping
+
+def identity_mapping( size ):
+    mapping = IntToIntMapping( size )
+    for i in range( size-1 ):
+        mapping.set_mapping( i, i )
+    return mapping    
     

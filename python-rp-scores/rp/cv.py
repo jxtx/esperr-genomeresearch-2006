@@ -62,6 +62,8 @@ class CV( object ):
         train_set_scores_2 = [ predictor.score( x ) for x in train_set_2 ]
         test_set_scores_1 = [ predictor.score( x ) for x in test_set_1 ]
         test_set_scores_2 = [ predictor.score( x ) for x in test_set_2 ]
+	# Free model
+	del predictor
         # Determine threshold
         low, mid, high = self.determine_threshold_simple( train_set_scores_1, train_set_scores_2 )
         # Classify
