@@ -3,14 +3,14 @@ import unittest
 from intervals import *
 
 test_intervals = [ 
-    Interval( 0,  10,    "1" ),
-    Interval( 9,   40,   "2" ),
-    Interval( 5,   11,   "3" ),
-    Interval( 30,  42,   "4" ),
-    Interval( 31,  43,   "5" ),
-    Interval( 11,  1000, "6" ),
-    Interval( 100, 101,  "7" ),
-    Interval( 20,  4000, "8" )
+    IntervalWithValue( 0,  10,    "1" ),
+    IntervalWithValue( 9,   40,   "2" ),
+    IntervalWithValue( 5,   11,   "3" ),
+    IntervalWithValue( 30,  42,   "4" ),
+    IntervalWithValue( 31,  43,   "5" ),
+    IntervalWithValue( 11,  1000, "6" ),
+    IntervalWithValue( 100, 101,  "7" ),
+    IntervalWithValue( 20,  4000, "8" )
 ]
 
 class TestCase( unittest.TestCase ):
