@@ -1,4 +1,4 @@
-# Simple wrapper for reading intervals from file
+"""Some classes for working with ranges. This needs to be reconciled with 'intervals'"""
 
 class Range:
     def __init__( self, start, end ):
