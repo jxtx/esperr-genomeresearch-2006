@@ -29,9 +29,9 @@ cdef class StandardModel:
         self.scores = scores
         self.scores_len = radix ** ( order + 1 )
 
-    def get_order( self ): 
+    def get_order( self ):
         return self.order
-    
+
     def get_radix( self ):
         return self.radix
 

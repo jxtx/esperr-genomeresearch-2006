@@ -1,3 +1,7 @@
+cdef extern from "Python.h":
+    int PyObject_AsReadBuffer(object obj, void **buffer, int *buffer_len) except -1
+    object PyFloat_FromDouble( double v )
+
 cdef extern from "stdlib.h":    
     void* malloc( int )
     void free( void* )
@@ -55,6 +59,13 @@ cdef count( int order, int radix, int* s, int slen, Node* root ):
             cur = cur.children[prefix_symbol]
             cur.vals[ symbol ] = cur.vals[ symbol ] + 1
 
+cdef fill_in_counts( int order, int radix, Node* counts, strings ):
+    cdef int* buf
+    cdef int buf_len
+    for string in strings:
+        PyObject_AsReadBuffer( string, <void**> &buf, &buf_len )
+        count( order, radix, buf, buf_len / sizeof( int ), counts )
+
 cdef to_probs( int radix, Node* node ):
     cdef int i, total, some_zero
     total = 0
@@ -92,6 +103,36 @@ cdef Node* to_scores( int radix, Node* probs1, Node* probs2 ):
         rval.children[i] = to_scores( radix, probs1.children[i], probs2.children[i] )
     return rval
 
+cdef score_string( int order, int radix, Node* tree, int* text, int start, int length ):
+    cdef int i, j, good, words, symbol, prefix_symbol
+    cdef float score
+    cdef Node* cur
+    words = 0
+    for i from start <= i < start + length:
+        # First, is it a valid word -- may be too stringent but consistent with fixed order
+        if i - order < 0: continue
+        good = 1
+        for j from 0 <= j < order:
+            if text[i-j] < 0: 
+                good = 0
+        if good == 0: continue
+        # Now walk back and score
+        cur = tree        
+        symbol = text[i]
+        for j from 1 <= j < order:
+            if i - j < 0: break
+            prefix_symbol = text[i-j]
+            # If we can't go back any further, use this context
+            if cur.children[prefix_symbol] == NULL: break 
+            # Otherwise we step back another symbol
+            cur = cur.children[prefix_symbol]
+        score = score + cur.vals[ symbol ]
+        words = words + 1
+    if words > 0:
+        return score / <float> words
+    else:
+        return None
+
 cdef print_node( int level, int radix, Node* node ):
     
     print "Node: [", 
@@ -102,32 +143,66 @@ cdef print_node( int level, int radix, Node* node ):
             for j from 0 <= j < level: printf( "      " );
             print i, "->",
             print_node( level+1, radix, node.children[i] )
+
+cdef class Model:
+    cdef int order
+    cdef int radix
+    cdef Node* tree
+
+    cdef init( self, int order, int radix, Node* tree ):
+        self.order = order
+        self.radix = radix
+        self.tree = tree
+
+    def get_order( self ):
+        return self.order
+
+    def get_radix( self ):
+        return self.radix
+    
+    def score( self, string, int start=0, int length=-1 ):
+        cdef int* buf
+        cdef int buf_len
+        PyObject_AsReadBuffer( string, <void**> &buf, &buf_len )
+        buf_len = buf_len / sizeof( int )
+        if length < 0:
+            length = buf_len
+        else:
+            assert start + length <= buf_len
+        s = score_string( self.order, self.radix, self.tree, buf, start, length )
+        # str( s )
+        if s is None: raise "No valid data in region to be scored"
+        return s
+
+    def to_file( self, file ):
+        raise "Not Yet Implemented"
+        #file.write( "order: " + str( self.order ) + "\n" )
+        #file.write( "radix: " + str( self.radix ) + "\n" )
+
+    def __dealloc__( self ):
+        free_node( self.tree, self.radix )
     
 def train( int order, int radix, pos_strings, neg_strings ):
-    cdef Node *pos_node *neg_node *scores
+    cdef Node *pos_node, *neg_node, *scores
+    cdef Model rval
 
-    pos_node = new_node()
-    fill_in( order, radix, pos_node, pos_strings )
+    pos_node = new_node( radix )
+    fill_in_counts( order, radix, pos_node, pos_strings )
     to_probs( radix, pos_node )
 
-    neg_node = new_node()
-    fill_in( order, radix, neg_node, neg_strings )
+    neg_node = new_node( radix )
+    fill_in_counts( order, radix, neg_node, neg_strings )
     to_probs( radix, neg_node )
 
     scores = to_scores( radix, pos_node, neg_node )
 
-    free_node( pos_node )
-    free_node( neg_node )
+    free_node( pos_node, radix )
+    free_node( neg_node, radix )
 
-    
+    rval = Model()
+    rval.init( order, radix, scores )
 
-
-cdef fill_in( int order, int radix, Node* counts, strings ):
-    cdef int* buf
-    cdef int buf_len
-    for string in strings:
-        PyObject_AsReadBuffer( string, <void**> &buf, &buf_len )
-        count( order, radix, buf, buf_len / sizeof( int ), counts )
+    return rval
 
 
 def test():
