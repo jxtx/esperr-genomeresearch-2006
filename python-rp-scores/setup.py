@@ -11,5 +11,6 @@ setup( name = "RP",
        ext_modules=[ Extension( "rp.models.standard", ["rp/models/standard.pyx", "rp/models/standard_core.c"] ),
                      Extension( "rp.models.gill_pst", ["rp/models/gill_pst.pyx"] + gill_code, include_dirs=['third_party/gill_pst/'] ), 
                      Extension( "rp.models.tree", ["rp/models/tree.pyx"] ), 
+                     Extension( "rp.models.tree_pruned_1", ["rp/models/tree_pruned_1.pyx"] ), 
                      Extension( "rp.mapping_helper", ["rp/mapping_helper.pyx"] ) ],
        cmdclass = {'build_ext': build_ext} )
