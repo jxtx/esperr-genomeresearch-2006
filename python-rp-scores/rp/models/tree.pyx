@@ -1,3 +1,5 @@
+from elementtree.ElementTree import ElementTree, Element, parse
+
 cdef extern from "Python.h":
     int PyObject_AsReadBuffer(object obj, void **buffer, int *buffer_len) except -1
     object PyFloat_FromDouble( double v )
@@ -189,9 +191,26 @@ cdef class Model:
         return s
 
     def to_file( self, file ):
-        raise "Not Yet Implemented"
-        #file.write( "order: " + str( self.order ) + "\n" )
-        #file.write( "radix: " + str( self.radix ) + "\n" )
+        root = Element( "root", order=str(self.order), radix=str(self.radix) )
+        root.append( self.node_to_element( self.tree ) )
+        ElementTree( root ).write( file )
+
+    cdef node_to_element( self, Node* node ):
+        e = Element( "node" )
+        if node == NULL: return e
+
+        v = Element( "vals" )
+        s = []
+        for i in range( self.radix ): s.append( str( node.vals[i] ) )
+        v.text = ','.join( s )
+        e.append( v )
+
+        c = Element( "children" )
+        for i in range( self.radix ):
+            c.append( self.node_to_element( node.children[i] ) )
+        e.append( c )
+
+        return e
 
     def __dealloc__( self ):
         free_node( self.tree, self.radix )
@@ -223,38 +242,37 @@ def train( int order, int radix, pos_strings, neg_strings ):
 
     return rval
 
+def from_file( f ):
+    cdef int order
+    cdef int radix
+    cdef Node* node
+    cdef Model rval
 
-def test():
-    cdef int text1[6]
-    cdef int text2[6]
-    cdef Node* node1
-    cdef Node* node2
-    cdef Node* scores
-    
-    text1[0] = 0
-    text1[1] = 0
-    text1[2] = 0
-    text1[3] = 1
-    text1[4] = 2
-    text1[5] = 2
+    tree = parse( f )
+    root = tree.getroot()
+    order = int( root.get( 'order' ) )
+    radix = int( root.get( 'radix' ) )
 
-    text2[0] = 1
-    text2[1] = 0
-    text2[2] = 2
-    text2[3] = 1
-    text2[4] = 1
-    text2[5] = 2
-    
-    node1 = new_node( 3 )
-    node2 = new_node( 3 )
+    node = parse_node( root.find( "node" ), radix )
 
-    count( 3, 3, text1, 6, node1 )    
-    to_probs( 3, node1 )
-    print_node( 1, 3, node1 )
+    rval = Model()
+    rval.init( order, radix, node )
+    return rval
 
-    count( 3, 3, text2, 6, node2 )    
-    to_probs( 3, node2 )
-    print_node( 1, 3, node2 )
-
-    scores = to_scores( 3, node1, node2 )
-    print_node( 1, 3, scores )
+cdef Node* parse_node( element, int radix ):
+    cdef Node* rval
+    # Empty element corresponds to NULL pointer
+    if not element: return NULL
+    # Create new node
+    rval = new_node( radix )
+    # Parse vals
+    vals = map( float, element.find( "vals" ).text.split( ',' ) )
+    assert len( vals ) == radix
+    for i in range( radix ):
+        rval.vals[i] = vals[i]
+    # Parse children
+    children = element.find( "children" )
+    assert len( children ) == radix
+    for i in range( radix ):
+        rval.children[i] = parse_node( children[i], radix )
+    return rval
