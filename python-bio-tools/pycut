@@ -1,0 +1,140 @@
+#!/usr/bin/env python
+
+"""
+Usage: pycut [OPTIONS] [SLICES]
+Split stdin and output the asked-for fields, using python behaviour.
+Concatenates line.split()[SLICE] for every slice on the command line.
+
+    -s, --skip          :  do not print blank lines (like "cut")
+    --strict            :  only print those lines which can provide
+                           all slices (implies --skip)
+    -d <delimiter> 
+    --delim <delimiter> :  use <delimiter> as the argument to split()
+
+    --sep <seperator>   :  use this string to join the chosen fields
+    --aslist            :  output as a python list, using repr()
+"""
+
+__author__ = "Ted Whalen <tew@northwestern.edu>"
+__version__ = "1.0"
+__license__ = "GPL2"
+__copyright__ = "Northwestern University, 2003"
+
+import sys, getopt
+
+def flatten(x):
+    if type(x) in (type(()),type([])): # let's not flatten strings
+        if len(x) > 1: # flatten the car, flatten the cdr
+            return flatten(x[0]) + flatten(x[1:])
+        elif len(x): # just flatten the car
+            return flatten(x[0])
+        else:
+            return [] # if given an empty set, return it
+    else:
+        return [x] # return whatever this is, inside a list
+
+class Options:
+    short_options = "sd:"
+    long_options = ["skip","strict","delim=","aslist","sep=","help"]
+    skip = 0
+    strict = 0
+    delim = None
+    args = []
+    sep = " "
+    aslist = None
+    def __init__(self):
+        try:
+            flags, args = getopt.getopt(sys.argv[1:], self.short_options,
+                                    self.long_options)
+        except getopt.GetoptError, msg:
+            print "pycut:", msg
+            print "try `pycut --help` for more information."
+            sys.exit(1)
+
+        for flag in flags:
+            if flag[0] in ("-s", "--skip"):
+                self.skip = 1
+            elif flag[0] in ('--strict',):
+                self.strict = 1
+                self.skip = 1
+            elif flag[0] in ("-d", "--delim"):
+                self.delim = flag[1]
+            elif flag[0] in ("--aslist",):
+                print "x"
+                self.aslist = 1
+            elif flag[0] in ("--sep",):
+                self.sep = flag[1]
+            elif flag[0] in ("--help",):
+                print __doc__
+                sys.exit()
+
+                
+        self.args = args
+
+class Splitter:
+    def __init__(self):
+
+        self.options = Options()
+
+        self.slices = self.options.args
+
+        # check for valid slice notation
+        map(self.parse_slice, self.slices)
+
+    def parse_slice(self, slice):
+        ss = slice.split(":")
+        try:
+            for s in ss:
+                if s:
+                    # sometimes we get a ":" or a ":-1" kind of thing
+                    int(s)
+            assert len(ss) < 3 # must be no more than one colon
+        except AssertionError:
+            raise ValueError, "Too many colons in slice: %s" % slice
+        except ValueError:
+            raise ValueError, "Invalid slice format: %s" % slice
+
+    def slice_line(self, line):
+        parts = []
+        if self.options.delim:
+            split_line = line.split(self.options.delim)
+        else:
+            split_line = line.split()
+        for sl in self.slices:
+            try:
+                # so this is somewhat sketchy, eval().
+                # but what choice do we have?
+                # and we've already checked the syntax, right?
+                code = "split_line[%s]" % sl
+                result = eval(code)
+                parts.append(result)
+            except IndexError:
+                if self.options.strict:
+                    #because we are strict, this line is a no-go
+                    return ""
+                else:
+                    # blithely continue on
+                    pass
+        if self.options.aslist:
+            pp = flatten(parts)
+            if pp or not self.options.skip:
+                # let's not print [] unless we have to
+                return repr(flatten(parts))
+        else:
+            return self.options.sep.join(flatten(parts)).strip()
+
+    def process_file(self, f):
+
+        l = f.readline()
+        while l:
+            out = self.slice_line(l)
+            if out or not self.options.skip:
+                print out
+            l = f.readline()
+
+def main():
+    slicer = Splitter()
+    slicer.process_file(sys.stdin)
+
+if __name__ == '__main__':
+    main()
