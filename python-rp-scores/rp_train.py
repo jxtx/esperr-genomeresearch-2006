@@ -19,6 +19,23 @@ import traceback
 
 from rp import io, standard_model
 
+def run( pos_file, neg_file, out_file, format, mapping, radix, order ):
+
+    # Read integer sequences
+    pos_strings = list( io.get_reader( pos_file, options.format, mapping ) )
+    neg_strings = list( io.get_reader( neg_file, options.format, mapping ) )
+
+    # Determine radix
+    if not radix:
+	if mapping: radix = mapping.symbol_count
+        else: radix = max( map( max, pos_strings ) + map( max, neg_strings ) ) + 1
+
+    # Build model
+    model = standard_model.train( order, radix, pos_strings, neg_strings )
+
+    # Write to out file
+    model.to_file( out )
+
 def main():
     
     # Parse command line
@@ -34,21 +51,8 @@ def main():
     except:
         cookbook.doc_optparse.exit()
 
-    # Read integer sequences
-    pos_strings = list( io.get_reader( open( pos_fname ), options.format, mapping ) )
-    neg_strings = list( io.get_reader( open( neg_fname ), options.format, mapping ) )
-
-    # Determine radix
-    if not radix:
-	if mapping: radix = mapping.symbol_count
-        else: radix = max( map( max, pos_strings ) + map( max, neg_strings ) ) + 1
-
-    # Build model
-    model = standard_model.train( order, radix, pos_strings, neg_strings )
-
-    # Write it to a file
     out = open( out_fname, "w" )
-    model.to_file( out )
+    run( open( pos_fname ), open( neg_fname ), out, format, mapping, radix, order )
     out.close()
 
 if __name__ == "__main__": main()

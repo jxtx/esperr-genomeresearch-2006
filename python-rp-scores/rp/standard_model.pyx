@@ -45,12 +45,16 @@ cdef class StandardModel:
             a.append( self.scores[i] )
         return a
 
-    def score( self, string, int start, int length ):
+    def score( self, string, int start=0, int length=-1 ):
         cdef int* buf
         cdef int buf_len
         cdef real rval
         PyObject_AsReadBuffer( string, <void**> &buf, &buf_len )
-        assert start + length <= buf_len / sizeof( int )
+        buf_len = buf_len / sizeof( int )
+        if length < 0:
+            length = buf_len
+        else:
+            assert start + length <= buf_len / sizeof( int )
         if score_string( self.order, self.radix, self.scores, buf, start, length, &rval ):
             return rval
         else:

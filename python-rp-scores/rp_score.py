@@ -19,6 +19,21 @@ import traceback
 
 from rp import io, standard_model
 
+def run( data_file, model_file, out_file, format, mapping ):
+    
+    # Read model
+    model = standard_model.from_file( model_file )
+    order = model.get_order()
+    radix = model.get_radix()
+
+    # Read integer sequences
+    strings = io.get_reader( open( data_fname ), format, mapping )
+
+    # Score each
+    for string in strings:
+	score = model.score( string, 0, len( string ) )
+	print >>out, score  
+
 def main():
     
     # Parse command line
@@ -32,23 +47,8 @@ def main():
     except:
         cookbook.doc_optparse.exit()
 
-    # Read model
-    model = standard_model.from_file( open( model_fname ) )
-    order = model.get_order()
-    radix = model.get_radix()
-
-    # Read integer sequences
-    strings = io.get_reader( open( data_fname ), options.format, mapping )
-
-    # Open output file
-    out = open( out_fname, "w" )
-
-    # Score each
-    for string in strings:
-	score = model.score( string, 0, len( string ) )
-	print >>out, score
-    
-    # Close output file
+    out = open( out_fname, "w" )   
+    run( open( data_fname ), open( model_fname ), out, options.format, mapping )
     out.close()
 
 if __name__ == "__main__": main()

@@ -19,7 +19,24 @@ import traceback
 
 from rp import io, standard_model
 
+def run( data_file, model_file, out_file, mapping, window, shift ):
+
+    # Read model
+    model = standard_model.from_file( model_file )
+    order = model.get_order()
+    radix = model.get_radix()
+
+    # Open maf file
+    mafs = align.maf.Reader( data_file )
+
+    # Score each alignment
+    for maf in mafs:
+	ints = seq_numarray.DNA.translate_alignment( [ c.text for c in maf.components ] )
+	if mapping: ints = mapping.translate( ints )
+	score_windows( maf, array.array( 'i', list( ints ) ), model, out, window, shift )
+
 def score_windows( maf, string, model, out, window, shift ):
+
     abs_pos = maf.components[0].start
     text = maf.components[0].text
     for i, c in enumerate( text ):
@@ -43,24 +60,8 @@ def main():
     except:
         cookbook.doc_optparse.exit()
     
-    # Read model
-    model = standard_model.from_file( open( model_fname ) )
-    order = model.get_order()
-    radix = model.get_radix()
-
-    # Open maf file
-    mafs = align.maf.Reader( open( data_fname ) )
-
-    # Open output file
     out = open( out_fname, "w" )
-
-    # Score each
-    for maf in mafs:
-	ints = seq_numarray.DNA.translate_alignment( [ c.text for c in maf.components ] )
-	if mapping: ints = mapping.translate( ints )
-	score_windows( maf, array.array( 'i', list( ints ) ), model, out, window, shift )
-    
-    # Close output file
+    run( open( data_fname ), open( model_fname ), out, mapping, window, shift )
     out.close()
 
 if __name__ == "__main__": main()
