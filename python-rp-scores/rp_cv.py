@@ -33,18 +33,18 @@ def run( pos_file, neg_file, format, mapping, radix, orders, modname ):
         if mapping: radix = mapping.get_out_size()
         else: radix = max( map( max, pos_strings ) + map( max, neg_strings ) ) + 1
 
+    print "Order     TP  ~TP  ~FP   FP   FN  ~FN  ~TN   TN      %"
+
     # Cross validate for various orders
     for order in orders:
         model_factory = lambda d0, d1: rp.models.get( modname ).train( order, radix, d0, d1 )
         cv_engine = rp.cv.CV( model_factory, pos_strings, neg_strings )
         cv_engine.run()
 
-        print "Order:", order
-        print "          +   ~+   ~-    -"
-        print "Reg:  ", cv_engine.cls1
-        print "AR:   ", cv_engine.cls2
-        print "Rate: ", cv_engine.get_success_rate()
-
+        print "%5d  " % order,
+        print cv_engine.cls1, cv_engine.cls2,
+        print "  %2.2f" % cv_engine.get_success_rate()
+        
 def main():
 
     # Parse command line

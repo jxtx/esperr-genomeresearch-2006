@@ -22,13 +22,10 @@ import rp.models.averaging
 
 import rp.mapping
 
-STOP_SIZE = 22
+stop_size = 5
+fold = 5 
+passes = 5 
 
-fold = 10
-passes = 10
-
-# FIXME: select order dynamically
-order = 1
 model = rp.models.averaging
 
 def run( pos_file, neg_file, out_dir, format, align_count, mapping ):
@@ -43,7 +40,7 @@ def run( pos_file, neg_file, out_dir, format, align_count, mapping ):
     symbol_count = mapping.get_out_size()
 
     # Collapse
-    while symbol_count > STOP_SIZE:
+    while symbol_count > stop_size:
 
         print >> sys.stderr, "Collapsing from:", symbol_count
 
@@ -68,6 +65,7 @@ def run( pos_file, neg_file, out_dir, format, align_count, mapping ):
                 count += 1
                 pb.update_and_print( count, sys.stderr )
                 
+        mapping = best_mapping
         symbol_count -= 1
         
         # Append merit to merit output        
@@ -77,7 +75,7 @@ def run( pos_file, neg_file, out_dir, format, align_count, mapping ):
         
         # Write best mapping to a file
         mapping_out = open( os.path.join( out_dir, "%03d.mapping" % symbol_count ), 'w' )
-        for i, symbol in enumerate( best_mapping.get_table() ): 
+        for i, symbol in enumerate( mapping.get_table() ): 
             print >>mapping_out, str.join( '', rp.mapping.DNA.reverse_map( i, align_count ) ), symbol
         mapping_out.close()
 
@@ -86,11 +84,20 @@ def calc_merit( pos_strings, neg_strings, mapping ):
     pos_strings = [ mapping.translate( s ) for s in pos_strings ]
     neg_strings = [ mapping.translate( s ) for s in neg_strings ]
     # Cross validate using those strings
-    model_factory = lambda d0, d1: model.train( order, mapping.get_out_size(), d0, d1 )
+    radix = mapping.get_out_size()
+    order = max_order( radix )
+    model_factory = lambda d0, d1: model.train( order, radix, d0, d1 )
     cv_engine = cv.CV( model_factory, pos_strings, neg_strings, fold=fold, passes=passes )
     cv_engine.run()
     # Merit is TP + TN
     return cv_engine.cls1.pos + cv_engine.cls2.neg
+
+def max_order( radix ):
+    """Determine max order based on size of alphabet"""
+    if radix <= 4: return 4
+    elif radix <= 7: return 3
+    elif radix <= 14: return 2
+    else: return 1
 
 def main():
 

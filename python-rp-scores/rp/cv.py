@@ -63,7 +63,7 @@ class CV( object ):
         test_set_scores_1 = [ predictor.score( x ) for x in test_set_1 ]
         test_set_scores_2 = [ predictor.score( x ) for x in test_set_2 ]
         # Determine threshold
-        low, mid, high = self.determine_threshold( train_set_scores_1, train_set_scores_2 )
+        low, mid, high = self.determine_threshold_simple( train_set_scores_1, train_set_scores_2 )
         # Classify
         self.classify( test_set_scores_1, low, mid, high, self.cls1 )
         self.classify( test_set_scores_2, low, mid, high, self.cls2 )
@@ -81,6 +81,20 @@ class CV( object ):
             elif score < mid: cls.unc_neg += 1
             elif score < high: cls.unc_pos += 1
             else: cls.pos += 1
+
+    def determine_threshold_simple( self, set1, set2 ):
+        smallest_pos = min( set1 )
+        largest_neg = max( set2 )
+        # If completely separated
+        if smallest_pos > largest_neg:
+            high = smallest_pos
+            low = largest_neg + 0.00000000001
+            mid = 0
+        # Else overlap
+        else:
+            high = low = mid = 0
+        # Return the thresholds
+        return low, mid, high
 
     def determine_threshold( self, set1, set2 ):
         sorted1 = set1[:]; sorted1.sort()

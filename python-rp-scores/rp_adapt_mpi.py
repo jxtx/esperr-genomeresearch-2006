@@ -32,7 +32,7 @@ print "I am node %d of %d" % ( node_id, nodes )
 stop_size = 5
 fold = 10
 passes = 10
-order = 2
+
 model = rp.models.averaging
 
 def run( pos_file, neg_file, out_dir, format, align_count, mapping ):
@@ -102,14 +102,23 @@ def all_pairs( n ):
     for i in range( 0, n ):
         for j in range( i + 1, n ):
             rval.append( ( i, j ) )
-    return rval        
+    return rval   
+    
+def max_order( radix ):
+    """Determine max order based on size of alphabet"""
+    if radix <= 4: return 4
+    elif radix <= 7: return 3
+    elif radix <= 14: return 2
+    else: return 1     
 
 def calc_merit( pos_strings, neg_strings, mapping ):
     # Apply mapping to strings
     pos_strings = [ mapping.translate( s ) for s in pos_strings ]
     neg_strings = [ mapping.translate( s ) for s in neg_strings ]
     # Cross validate using those strings
-    model_factory = lambda d0, d1: model.train( order, mapping.get_out_size(), d0, d1 )
+    radix = mapping.get_out_size()
+    order = max_order( radix )
+    model_factory = lambda d0, d1: model.train( order, radix, d0, d1 )
     cv_engine = rp.cv.CV( model_factory, pos_strings, neg_strings, fold=fold, passes=passes )
     cv_engine.run()
     # Merit is TP + TN
