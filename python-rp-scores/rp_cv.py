@@ -25,6 +25,8 @@ import rp.models
 
 def run( pos_file, neg_file, format, mapping, radix, orders, modname ):
 
+    # Split up 
+
     # Read integer sequences
     pos_strings = list( rp.io.get_reader( pos_file, format, mapping ) )
     neg_strings = list( rp.io.get_reader( neg_file, format, mapping ) )
@@ -38,7 +40,7 @@ def run( pos_file, neg_file, format, mapping, radix, orders, modname ):
 
     # Cross validate for various orders
     for order in orders:
-        model_factory = lambda d0, d1: rp.models.get( modname ).train( order, radix, d0, d1 )
+        model_factory = lambda d0, d1: rp.models.train( modname, order, radix, d0, d1 )
         cv_engine = rp.cv.CV( model_factory, pos_strings, neg_strings )
         start_time = time.time()
         cv_engine.run()

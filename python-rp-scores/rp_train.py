@@ -33,7 +33,7 @@ def run( pos_file, neg_file, out_file, format, mapping, radix, order, modname ):
         else: radix = max( map( max, pos_strings ) + map( max, neg_strings ) ) + 1
                
     # Build model
-    model = rp.models.get( modname ).train( order, radix, pos_strings, neg_strings )
+    model = rp.models.train( modname, order, radix, pos_strings, neg_strings )
 
     # Write to out file
     model.to_file( out_file )

@@ -14,7 +14,7 @@ def draw( element, level ):
         sys.stdout.write( " +--" )
     # Symbol and vals for level
     print "[" + str( symbol ) + "] (",
-    for val in vals: print "%0.2f" % val,
+    for val in vals: print "%0.8f" % val,
     print "|", sum(vals),
     print ")"
     for child in element.find( "children" ):

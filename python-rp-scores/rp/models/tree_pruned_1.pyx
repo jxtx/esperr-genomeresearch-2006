@@ -105,10 +105,9 @@ cdef int count_for_order( int order, int max_order, int radix, int* s, int slen,
 #        if node.children[i] != NULL:
 #            to_probs( radix, node.children[i] )
 
-cdef to_probs( int radix, Node* node ):
-    """Discount Version"""
-    cdef int i, total, some_zero
-    cdef float discount, fudge_zero, fudge_nonzero
+cdef to_probs( int radix, Node* node, Node* parent, float discount ):
+    """Discount Version: Proportional take, Previous order give"""
+    cdef int i, total, num_zero
     total = 0
     num_zero = 0
     # Determine total and number of zero nodes
@@ -117,24 +116,21 @@ cdef to_probs( int radix, Node* node ):
             num_zero = num_zero + 1
         else:
             total = total + node.vals[i]
-    # Spread discount among nodes
-    discount = 0.01
-    if num_zero > 0:
-        fudge_zero = discount / num_zero
-        fudge_nonzero = (1-discount)
+    # Make probabilities
+    if num_zero == 0:
+        # No zero nodes, just straight probabilities
+        for i from 0 <= i < radix: 
+            node.vals[i] = node.vals[i] / total        
     else:
-        fudge_zero = 0
-        fudge_nonzero = 1
-    # Now do probs
-    for i from 0 <= i < radix:
-        if node.vals[i] == 0:
-            node.vals[i] = fudge_zero
-        else:
-            node.vals[i] = ( node.vals[i] / total ) * fudge_nonzero
+        # Spread discount among nodes
+        # print "spreading", discount
+        for i from 0 <= i < radix:
+            node.vals[i] = ( (1-discount) * (node.vals[i]/total) ) \
+                           + ( (discount) * parent.vals[i] )       
     # Recursively visit children        
     for i from 0 <= i < radix:
         if node.children[i] != NULL:
-            to_probs( radix, node.children[i] )
+            to_probs( radix, node.children[i], node, discount )
 
 cdef prune( int current_depth, int desired_depth, int radix, Node* node, int N ):
     cdef int i, j
@@ -259,12 +255,22 @@ cdef class Model:
         # sys.stderr.write( "freeing tree_prned_1.Model\n" ); sys.stderr.flush()
         free_node( self.tree, self.radix )
 
-def train( int order, int radix, pos_strings, neg_strings, int N=10, int K=2 ):
+def train( int order, int radix, pos_strings, neg_strings, **kwargs ):
     cdef Node *pos_node, *neg_node, *scores
     cdef Model rval
     cdef int* buf
     cdef int buf_len
     cdef int i
+    cdef int D, N
+    
+    # Convert keyword parameters
+    try: d = float( kwargs['D'] )
+    except: d = .10
+    assert 0.0 < d < 1.0, "Discount must be between 0 and 1"
+    
+    try: N = int( kwargs['N'] )
+    except: N = 5
+    assert N >= 0, "N must be non-negative"
 
     # Create root nodes for count/prob trees
     pos_node = new_node( radix )
@@ -291,8 +297,8 @@ def train( int order, int radix, pos_strings, neg_strings, int N=10, int K=2 ):
     #to_file( order, radix, pos_node, "pos_node.debug" )
     #to_file( order, radix, neg_node, "neg_node.debug" )
         
-    to_probs( radix, pos_node )
-    to_probs( radix, neg_node )
+    to_probs( radix, pos_node, NULL, d )
+    to_probs( radix, neg_node, NULL, d )
 
     scores = to_scores( radix, pos_node, neg_node )
 

@@ -1,3 +1,4 @@
+import sys
 from elementtree.ElementTree import ElementTree, Element, parse
 
 cdef extern from "Python.h":
@@ -78,28 +79,27 @@ cdef int fill_in_counts( int order, int radix, Node* counts, strings ):
             return 0
     return 1
 
-cdef to_probs( int radix, Node* node ):
-    """Laplace version"""
-    cdef int i, total, some_zero
-    total = 0
-    some_zero = 0
-    for i from 0 <= i < radix:
-        total = total + node.vals[i]
-        some_zero = some_zero or ( node.vals[i] == 0 )
-    if some_zero: 
-        total = total + radix
-    for i from 0 <= i < radix:
-        if some_zero:
-            node.vals[i] = node.vals[i] + 1
-        node.vals[i] = node.vals[i] / total
-    for i from 0 <= i < radix:
-        if node.children[i] != NULL:
-            to_probs( radix, node.children[i] )
+#cdef to_probs( int radix, Node* node ):
+#    """Laplace version"""
+#    cdef int i, total, some_zero
+#    total = 0
+#    some_zero = 0
+#    for i from 0 <= i < radix:
+#        total = total + node.vals[i]
+#        some_zero = some_zero or ( node.vals[i] == 0 )
+#    if some_zero: 
+#        total = total + radix
+#    for i from 0 <= i < radix:
+#        if some_zero:
+#            node.vals[i] = node.vals[i] + 1
+#        node.vals[i] = node.vals[i] / total
+#    for i from 0 <= i < radix:
+#        if node.children[i] != NULL:
+#            to_probs( radix, node.children[i] )
 
-cdef not_to_probs( int radix, Node* node ):
-    """Discount Version"""
-    cdef int i, total, some_zero
-    cdef float discount, fudge_zero, fudge_nonzero
+cdef to_probs( int radix, Node* node, Node* parent, float discount ):
+    """Discount Version: Proportional take, Previous order give"""
+    cdef int i, total, num_zero
     total = 0
     num_zero = 0
     # Determine total and number of zero nodes
@@ -108,24 +108,21 @@ cdef not_to_probs( int radix, Node* node ):
             num_zero = num_zero + 1
         else:
             total = total + node.vals[i]
-    # Spread discount among nodes
-    discount = 1.0 / radix 
-    if num_zero > 0:
-        fudge_zero = discount / num_zero
-        fudge_nonzero = (1-discount)
+    # Make probabilities
+    if num_zero == 0:
+        # No zero nodes, just straight probabilities
+        for i from 0 <= i < radix: 
+            node.vals[i] = node.vals[i] / total        
     else:
-        fudge_zero = 0
-        fudge_nonzero = 1
-    # Now do probs
-    for i from 0 <= i < radix:
-        if node.vals[i] == 0:
-            node.vals[i] = fudge_zero
-        else:
-            node.vals[i] = ( node.vals[i] / total ) * fudge_nonzero
+        # Spread discount among nodes
+        # print "spreading", discount
+        for i from 0 <= i < radix:
+            node.vals[i] = ( (1-discount) * (node.vals[i]/total) ) \
+                           + ( (discount) * parent.vals[i] )       
     # Recursively visit children        
     for i from 0 <= i < radix:
         if node.children[i] != NULL:
-            to_probs( radix, node.children[i] )
+            to_probs( radix, node.children[i], node, discount )
 
 cdef Node* to_scores( int radix, Node* probs1, Node* probs2 ):
     cdef Node* rval
@@ -224,47 +221,37 @@ cdef class Model:
         s = score_string( self.order, self.radix, self.tree, buf, start, length )
         if s is None: raise "No valid data in region to be scored"
         return s
-
+        
     def to_file( self, file ):
         root = Element( "root", order=str(self.order), radix=str(self.radix) )
-        root.append( self.node_to_element( self.tree ) )
+        root.append( node_to_element( self.order, self.radix, -1, self.tree ) )
         ElementTree( root ).write( file )
-
-    cdef node_to_element( self, Node* node ):
-        e = Element( "node" )
-        if node == NULL: return e
-
-        v = Element( "vals" )
-        s = []
-        for i in range( self.radix ): s.append( str( node.vals[i] ) )
-        v.text = ','.join( s )
-        e.append( v )
-
-        c = Element( "children" )
-        for i in range( self.radix ):
-            c.append( self.node_to_element( node.children[i] ) )
-        e.append( c )
-
-        return e
 
     def __dealloc__( self ):
         free_node( self.tree, self.radix )
     
-def train( int order, int radix, pos_strings, neg_strings ):
+def train( int order, int radix, pos_strings, neg_strings, **kwargs ):
     cdef Node *pos_node, *neg_node, *scores
     cdef Model rval
+    cdef float d
+    
+    # Convert keyword parameters
+    try: D = float( kwargs['D'] )
+    except: D = .05
 
     pos_node = new_node( radix )
     if pos_node == NULL: raise "Malloc failed creating pos root"
     if fill_in_counts( order, radix, pos_node, pos_strings ) == 0:
         raise "Malloc failed, filling in pos counts"
-    to_probs( radix, pos_node )
+    # to_file( order, radix, pos_node, "pos_node.debug" )
+    to_probs( radix, pos_node, NULL, d )
+    # to_file( order, radix, pos_node, "pos_probs.debug" )
 
     neg_node = new_node( radix )
     if neg_node == NULL: raise "Malloc failed creating neg root"
     if fill_in_counts( order, radix, neg_node, neg_strings ) == 0:
         raise "Malloc failed, filling in neg counts"
-    to_probs( radix, neg_node )
+    to_probs( radix, neg_node, NULL, d )
 
     scores = to_scores( radix, pos_node, neg_node )
     if scores == NULL: raise "Malloc failed build score tree"
@@ -294,8 +281,33 @@ def from_file( f ):
     rval.init( order, radix, node )
     return rval
 
+cdef to_file( int order, int radix, Node* node, filename ):
+    root = Element( "root", order=str(order), radix=str(radix) )
+    root.append( node_to_element( order, radix, -1, node) )
+    out = open( filename, 'w' )
+    ElementTree( root ).write( out )
+    out.close()
+    
+cdef node_to_element( int order, int radix, int symbol, Node* node ):
+    e = Element( "node", symbol=str(symbol) )
+    if node == NULL: return e
+
+    v = Element( "vals" )
+    s = []
+    for i in range( radix ): s.append( str( node.vals[i] ) )
+    v.text = ','.join( s )
+    e.append( v )
+
+    c = Element( "children" )
+    for i in range( radix ):
+        c.append( node_to_element( order, radix, i, node.children[i] ) )
+    e.append( c )
+
+    return e
+
 cdef Node* parse_node( element, int radix ):
     cdef Node* rval
+    cdef int index
     # Empty element corresponds to NULL pointer
     if not element: return NULL
     # Create new node
@@ -306,8 +318,8 @@ cdef Node* parse_node( element, int radix ):
     for i in range( radix ):
         rval.vals[i] = vals[i]
     # Parse children
-    children = element.find( "children" )
-    assert len( children ) == radix
-    for i in range( radix ):
-        rval.children[i] = parse_node( children[i], radix )
+    for child in element.find( "children" ):
+        index = int( children[i].symbol )
+        assert index < radix
+        rval.children[ index ] = parse_node( children[i], radix )
     return rval
