@@ -50,7 +50,7 @@ def __main__():
                 interval_file.write( "%s %s\n" % ( chunk_min, chunk_max ) )
                 chunk_min = INF
                 chunk_max = 0
-            maf_writer = align.maf.Writer( file( "%s/%s.maf" % ( out_dir, current_chunk ), "w" ) )
+            maf_writer = align.maf.Writer( file( "%s/%09d.maf" % ( out_dir, current_chunk ), "w" ) )
             count = 0
         maf_writer.write( m )
         count += m.text_size
