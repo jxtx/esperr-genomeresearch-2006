@@ -1,9 +1,41 @@
 from align import *
 
+import itertools
+import interval_index_file
+
 # Tools for dealing with multiple alignments in MAF format
 
-class Reader( object ):
+class Indexed( object ):
+    """Indexed access to a maf using overlap queries, requires an index file"""
 
+    def __init__( self, maf_filename, index_filename=None, keep_open=False ):
+        if index_filename is None: index_filename = maf_filename + ".index"
+        self.indexes = interval_index_file.Indexes( filename=index_filename )
+        self.maf_filename = maf_filename
+        if keep_open: 
+            self.f = open( maf_filename )
+        else:
+            self.f = None
+
+    def get( self, src, start, end ):
+        intersections = self.indexes.find( src, start, end )
+        return itertools.imap( self.get_maf_at_offset, [ val for start, end, val in intersections ] )
+
+    def get_maf_at_offset( self, offset ):
+        if self.f:
+            self.f.seek( offset )
+            return read_next_maf( self.f ) 
+        else:
+            f = open( self.maf_filename )
+            try:
+                f.seek( offset )
+                return read_next_maf( f ) 
+            finally:
+                f.close()
+            
+class Reader( object ):
+    """Iterate over all maf blocks in a file in order"""
+    
     def __init__( self, file ):
         self.file = file
         # Read and verify maf header, store any attributes
@@ -12,35 +44,7 @@ class Reader( object ):
         self.attributes = parse_attributes( fields[1:] )
 
     def next( self ):
-        alignment = Alignment()
-        # Attributes line
-        line = readline( self.file, skip_blank=True )
-        if not line: return None
-        fields = line.split() 
-        if fields[0] != 'a': raise "Expected 'a ...' line"
-        alignment.attributes = parse_attributes( fields[1:] )
-        alignment.score = alignment.attributes['score']
-        del alignment.attributes['score']
-        # Sequence lines
-        while 1:
-            line = readline( self.file )
-            # EOF or Blank line terminates alignment components
-            if not line or line.isspace(): break
-            if line.isspace(): break 
-            # Verify
-            fields = line.split()
-            if fields[0] != 's': raise "Expected 's ...' line"
-            # Parse 
-            component = Component()
-            component.src = fields[1]
-            component.start = int( fields[2] )
-            component.size = int( fields[3] )
-            component.strand = fields[4]
-            component.src_size = int( fields[5] )
-            if len(fields) > 6: component.text = fields[6].strip()
-            # Add to set
-            alignment.add_component( component )
-        return alignment
+        return read_next_maf( self.file )
 
     def __iter__( self ):
         return ReaderIter( self )
@@ -85,7 +89,38 @@ class Writer( object ):
     def close( self ):
         self.file.close()
 
-# Helper methods
+# ---- Helper methods ---------------------------------------------------------
+
+def read_next_maf( file ):
+        alignment = Alignment()
+        # Attributes line
+        line = readline( file, skip_blank=True )
+        if not line: return None
+        fields = line.split() 
+        if fields[0] != 'a': raise "Expected 'a ...' line"
+        alignment.attributes = parse_attributes( fields[1:] )
+        alignment.score = alignment.attributes['score']
+        del alignment.attributes['score']
+        # Sequence lines
+        while 1:
+            line = readline( file )
+            # EOF or Blank line terminates alignment components
+            if not line or line.isspace(): break
+            if line.isspace(): break 
+            # Verify
+            fields = line.split()
+            if fields[0] != 's': raise "Expected 's ...' line"
+            # Parse 
+            component = Component()
+            component.src = fields[1]
+            component.start = int( fields[2] )
+            component.size = int( fields[3] )
+            component.strand = fields[4]
+            component.src_size = int( fields[5] )
+            if len(fields) > 6: component.text = fields[6].strip()
+            # Add to set
+            alignment.add_component( component )
+        return alignment
 
 def readline( file, skip_blank=False ):
     """Read a line from provided file, skipping any blank or comment lines"""

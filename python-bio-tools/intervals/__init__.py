@@ -59,6 +59,9 @@ class Intersecter( object ):
         self.dirty = True
         self.intervals.append( interval )
 
+    def add( self, start, end, value=None ):    
+        self.add_interval( Interval( start, end, value ) )
+        
     def find( self, start, end ):
         """Return a list of all stored intervals intersecting [start,end)"""
         result = []

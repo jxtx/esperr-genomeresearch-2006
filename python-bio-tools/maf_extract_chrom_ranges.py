@@ -67,7 +67,6 @@ def __main__():
                 if c.size < 1: 
                     good = False
             if good and sliced.text_size > mincols: out.write( sliced )
-            sys.stderr.write( "." )
          
     # Close output MAF
 
