@@ -1,5 +1,5 @@
 inplace: setup
-	cp target/rp/standard_model.so rp
+	cp target/rp/models/standard.so rp/models
 	cp target/rp/mapping_helper.so rp
 
 setup:

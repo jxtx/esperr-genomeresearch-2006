@@ -1,7 +1,7 @@
 cdef extern from "Python.h":
     int PyObject_AsReadBuffer(object obj, void **buffer, int *buffer_len) except -1
 
-cdef extern from "standard_model_helper.h":
+cdef extern from "standard_core.h":
     ctypedef double real
     ctypedef int bool
     int** new_counts( int order, int radix )

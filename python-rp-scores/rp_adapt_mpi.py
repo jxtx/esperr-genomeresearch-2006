@@ -16,9 +16,11 @@ import sys
 import traceback
 
 from cookbook.progress_bar import *
-from rp import cv, io, standard_model
 
+import rp.cv
+import rp.io
 import rp.mapping
+import rp.models.averaging
 
 # Startup pypar and get some info about what node we are
 import pypar 
@@ -31,8 +33,7 @@ stop_size = 5
 fold = 5
 passes = 5
 order = 1
-# FIXME: switch to 'averaging' strategy
-model = standard_model
+model = rp.models.averaging
 
 def run( pos_file, neg_file, out_dir, format, mapping ):
 
@@ -40,8 +41,8 @@ def run( pos_file, neg_file, out_dir, format, mapping ):
     merit_out = open( os.path.join( out_dir, 'merits.txt' ), 'w' )
 
     # Read integer sequences
-    pos_strings = list( io.get_reader( pos_file, format, None ) )
-    neg_strings = list( io.get_reader( neg_file, format, None ) )
+    pos_strings = list( rp.io.get_reader( pos_file, format, None ) )
+    neg_strings = list( rp.io.get_reader( neg_file, format, None ) )
 
     symbol_count = mapping.get_out_size()
 
@@ -115,7 +116,7 @@ def calc_merit( pos_strings, neg_strings, mapping ):
     neg_strings = [ mapping.translate( s ) for s in neg_strings ]
     # Cross validate using those strings
     model_factory = lambda d0, d1: model.train( order, mapping.get_out_size(), d0, d1 )
-    cv_engine = cv.CV( model_factory, pos_strings, neg_strings, fold=fold, passes=passes )
+    cv_engine = rp.cv.CV( model_factory, pos_strings, neg_strings, fold=fold, passes=passes )
     cv_engine.run()
     # Merit is TP + TN
     return cv_engine.cls1.pos + cv_engine.cls2.neg

@@ -16,7 +16,9 @@ import sys
 import traceback
 
 from cookbook.progress_bar import *
-from rp import cv, io, standard_model
+from rp import cv, io
+
+import rp.models.averaging
 
 import rp.mapping
 
@@ -25,9 +27,9 @@ STOP_SIZE = 22
 fold = 10
 passes = 10
 
-# FIXME: these should not be hardcoded, switch to 'averaging' strategy
+# FIXME: select order dynamically
 order = 1
-model = standard_model
+model = rp.models.averaging
 
 def run( pos_file, neg_file, out_dir, format, mapping ):
 

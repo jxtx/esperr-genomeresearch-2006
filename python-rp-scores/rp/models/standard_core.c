@@ -4,7 +4,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "standard_model_helper.h"
+#include "standard_core.h"
 
 #define bool int
 #define false 0

@@ -18,7 +18,7 @@ import traceback
 
 import rp.io
 import rp.mapping
-import rp.standard_model
+import rp.models.standard
 
 def run( pos_file, neg_file, out_file, format, mapping, radix, order ):
 
@@ -32,7 +32,7 @@ def run( pos_file, neg_file, out_file, format, mapping, radix, order ):
         else: radix = max( map( max, pos_strings ) + map( max, neg_strings ) ) + 1
         
     # Build model
-    model = rp.standard_model.train( order, radix, pos_strings, neg_strings )
+    model = rp.models.standard.train( order, radix, pos_strings, neg_strings )
 
     # Write to out file
     model.to_file( out_file )

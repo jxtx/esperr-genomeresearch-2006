@@ -18,12 +18,12 @@ import traceback
 
 import rp.io 
 import rp.mapping
-import rp.standard_model
+import rp.models.standard
 
 def run( data_file, model_file, out_file, mapping, window, shift ):
 
     # Read model
-    model = standard_model.from_file( model_file )
+    model = rp.models.standard.from_file( model_file )
     order = model.get_order()
     radix = model.get_radix()
 

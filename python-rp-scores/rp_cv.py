@@ -19,7 +19,7 @@ import traceback
 import rp.cv
 import rp.io
 import rp.mapping
-import rp.standard_model
+import rp.models.standard
 
 def run( pos_file, neg_file, format, mapping, radix, orders ):
 
@@ -34,7 +34,7 @@ def run( pos_file, neg_file, format, mapping, radix, orders ):
 
     # Cross validate for various orders
     for order in orders:
-        model_factory = lambda d0, d1: rp.standard_model.train( order, radix, d0, d1 )
+        model_factory = lambda d0, d1: rp.models.standard.train( order, radix, d0, d1 )
         cv_engine = rp.cv.CV( model_factory, pos_strings, neg_strings )
         cv_engine.run()
 
