@@ -54,7 +54,7 @@ cdef class StandardModel:
         if score_string( self.order, self.radix, self.scores, buf, start, length, &rval ):
             return rval
         else:
-            raise "No valid data in region to be scored"
+            return None
 
     def to_file( self, file ):
         file.write( "order: " + str( self.order ) + "\n" )
