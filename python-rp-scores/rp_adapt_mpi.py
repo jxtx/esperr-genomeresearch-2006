@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.3
+#!/usr/bin/env python
 
 """
 Collapse from a starting alphabet to a series of nested alphabets using
@@ -24,12 +24,12 @@ import rp.mapping
 import pypar 
 nodes = pypar.size() 
 node_id = pypar.rank() 
-print >>sys.stderr, "I am node %d of %d" % ( nodes, node_id )
+print "I am node %d of %d" % ( nodes, node_id )
 
-STOP_SIZE = 22
+STOP_SIZE = 5
 
-fold = 10
-passes = 10
+fold = 5
+passes = 5
 
 # FIXME: these should not be hardcoded, switch to 'averaging' strategy
 order = 1
@@ -49,8 +49,10 @@ def run( pos_file, neg_file, out_dir, format, mapping ):
     # Collapse
     while symbol_count > STOP_SIZE:
 
+        pypar.barrier()
+
         if node_id == 0:
-            print >> sys.stderr, "Collapsing from:", symbol_count
+            print "Collapsing from:", symbol_count
 
         pairs = all_pairs( symbol_count )
 
@@ -59,13 +61,14 @@ def run( pos_file, neg_file, out_dir, format, mapping ):
         lo = node_id * interval_size
         hi = lo + interval_size
         
-        print >> sys.stderr, ’Node %d has interval [%d, %d)’ % ( node_id, lo, hi ) 
+        print 'Node %d has interval [%d, %d) ' % ( node_id, lo, hi ) 
 
         # Find best collapsed mapping in interval
         best_i, best_j, best_merit = None, None, 0
         for i, j in pairs[lo:hi]:
             merit = calc_merit( pos_strings, neg_strings, mapping.collapse( i, j )  ) 
             if merit > best_merit:
+                best_i, best_j, best_merit = i, j, merit
                 
             
         # Aggregate results
@@ -90,12 +93,15 @@ def run( pos_file, neg_file, out_dir, format, mapping ):
             # Append merit to merit output        
             print >>merit_out, symbol_count, best_merit
         
-            print >>sys.stderr, "\nBest Merit %d." % best_merit,
+            print "\nBest Merit %d." % best_merit,
         
             # Write best mapping to a file
             mapping_out = open( os.path.join( out_dir, "%03d.mapping" % symbol_count ), 'w' )
             for symbol in mapping.get_table(): print >>mapping_out, symbol
             mapping_out.close()
+
+    # Clean up
+    pypar.finalize()
         
 def all_pairs( n ):
     rval = []

@@ -1,6 +1,5 @@
 import align.maf
 import array
-import alphabet
 import sys
 
 from Numeric import array
