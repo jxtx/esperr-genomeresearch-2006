@@ -204,7 +204,8 @@ real** counts_to_probs( int order, int radix, int** counts )
     return probs;
 }
 
-real* probs_to_score_matrix( int order, int radix, real** pos_probs, real** neg_probs )
+real* probs_to_score_matrix( int order, int radix, 
+                             real** pos_probs, real** neg_probs )
 {
     int i;
 
@@ -226,7 +227,8 @@ void free_scores( real* scores )
     free( scores );
 }
 
-bool score_string( int order, int radix, real* score_matrix, int* string, int start, int length, real* rval )
+bool score_string( int order, int radix, real* score_matrix, 
+                   int* string, int start, int length, real* rval )
 {
     int i, index;
     real score = 0;
@@ -235,34 +237,29 @@ bool score_string( int order, int radix, real* score_matrix, int* string, int st
 
     for ( i = start + order; i < stop; i++ )
     {
-	index = matrix_index( order, radix, string, i );
+        index = matrix_index( order, radix, string, i );
 
-	// Skip tuples containing invalid symbols
-	if ( index == -1 )
-	{
-	    continue;
-	}
-	else 
-	{
-	    valid_tuples++;
-	}
+        // Skip tuples containing invalid symbols
+        if ( index == -1 )
+        {
+            continue;
+        }
+        else 
+        {
+            valid_tuples++;
+        }
 
-	score += score_matrix[ index ];
+        score += score_matrix[ index ];
     }
 
     if ( valid_tuples > 0 )
     {
         *rval = score / (real) valid_tuples;
-	return true;
+	    return true;
     }
     else
     {
-	*rval = 0;
-	return false;
+        *rval = 0;
+        return false;
     }
-}
-
-real test()
-{
-    return 7.0;
 }
