@@ -1,8 +1,8 @@
-THRESH = 4 
 
-__all__ = [ "Interval", "Intersecter" ]
+__all__ = [ "Interval", "IntervalWithValue", "Intersecter" ]
 
 class Interval( object ):
+    """Basic interval, any object with start and end properties will work as well"""
     def __init__( self, start, end, value=None ):
         self.start = start
         self.end = end
@@ -10,9 +10,12 @@ class Interval( object ):
     def __cmp__( self, other ):
         return cmp( self.start, other.start ) or cmp( self.end, other.end )
     def __repr__( self ):
-        return "Interval( %d, %d, %s )" % ( self.start, self.end, repr( self.value ) )
+        if self.value:
+            return "IntervalWithValue( %d, %d, %s )" % ( self.start, self.end, repr( self.value ) )
+        else:
+            return "Interval( %d, %d )" % ( self.start, self.end )
 
-class Intersecter:
+class Intersecter( object ):
     """Data structure for performing window intersect queries on a set of 
        intervals. Algorithm details naively copied from Scott Schwartz's 
        'nxrpts.c'.
@@ -25,22 +28,23 @@ class Intersecter:
        Add intervals, the only requirement is that the interval have integer
        start and end attributes:
 
-       >>> intersecter.add_interval( Interval( 0,  10, "1" ) )
-       >>> intersecter.add_interval( Interval( 3,  7, "2" ) )
-       >>> intersecter.add_interval( Interval( 3,  40, "3" ) )
-       >>> intersecter.add_interval( Interval( 10, 50, "3" ) )
+       >>> intersecter.add_interval( Interval( 0,  10 ) )
+       >>> intersecter.add_interval( Interval( 3,  7 ) )
+       >>> intersecter.add_interval( Interval( 3,  40 ) )
+       >>> intersecter.add_interval( Interval( 10, 50 ) )
 
        Perform queries:
 
        >>> intersecter.find( 2, 5 )
-       [Interval( 3, 40, '3' ), Interval( 0, 10, '1' ), Interval( 3, 7, '2' )]
+       [Interval( 3, 40 ), Interval( 0, 10 ), Interval( 3, 7 )]
        >>> intersecter.find( 10, 100 )
-       [Interval( 3, 40, '3' ), Interval( 10, 50, '3' ), Interval( 0, 10, '1' )]
+       [Interval( 3, 40 ), Interval( 10, 50 ), Interval( 0, 10 )]
        >>> intersecter.find( 100, 200 )
        []
        
        """
 
+    THRESH = 4 
 
     # ---- Basic API ----------------------------------------------------------
 
@@ -51,6 +55,7 @@ class Intersecter:
 
     def add_interval( self, interval ):
         """Add an interval to the stored set"""
+        assert interval.start < interval.end, "Intervals must have length >= 1" 
         self.dirty = True
         self.intervals.append( interval )
 
@@ -79,7 +84,7 @@ class Intersecter:
         self.dirty = False
 
     def partition( self, lo, hi ):
-        if hi - lo < THRESH: return
+        if hi - lo < Intersecter.THRESH: return
         center = ( lo + hi ) // 2
         mid = self.intervals[ self.ends[ center ] ].end
         # self.ends[lo:center] is correct, separate away self.ends[q:hi)
@@ -120,7 +125,7 @@ class Intersecter:
     def find_func( self, lo, hi, start, end, report_func ):
         """For each stored interval i that intersects [start, end) call report_func( i )"""
         if self.dirty: self.prepare() 
-        if hi - lo < THRESH: 
+        if hi - lo < Intersecter.THRESH: 
             self.small_find( lo, hi, start, end, report_func )
             return
         p, q, m = self.parts( lo, hi )
@@ -149,7 +154,7 @@ class Intersecter:
                 report_func( interval )
 
     def left_find( self, lo, hi, start, end, report_func ):
-        while hi - lo >= THRESH:
+        while hi - lo >= Intersecter.THRESH:
             p, q, m = self.parts( lo, hi )
             if start > m:
                 j = q - 1
@@ -164,7 +169,7 @@ class Intersecter:
         self.small_find( lo, hi, start, end, report_func )
 
     def right_find( self, lo, hi, start, end, report_func ):
-        while hi - lo >= THRESH:
+        while hi - lo >= Intersecter.THRESH:
             p, q, m = self.parts( lo, hi )
             if end < m:
                 j = p
@@ -188,7 +193,7 @@ class Intersecter:
     # ---- Testing ------------------------------------------------------------
 
     def check_partition( self, lo, hi ):
-        if hi - lo < THRESH:
+        if hi - lo < Intersecter.THRESH:
             for i in range( lo, hi - 1 ):
                 assert self.intervals[ self.starts[ i ] ].start <= self.intervals[ self.starts[ i + 1 ] ].start
                 assert self.intervals[ self.ends[ i ] ].end <= self.intervals[ self.ends[ i + 1 ] ].end

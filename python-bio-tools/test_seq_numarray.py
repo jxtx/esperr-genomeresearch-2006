@@ -8,6 +8,10 @@ class TestCase( unittest.TestCase ):
     def testCol( self ):
         assert seq_numarray.DNA.translate_alignment_column( "---" ) == 0
         assert seq_numarray.DNA.translate_alignment_column( "TTT" ) == 124
+        
+    def testReverseCol( self ):
+        assert seq_numarray.DNA.reverse_alignment_column( 3, 0 ) == "---"
+        assert seq_numarray.DNA.reverse_alignment_column( 3, 124 ) == "TTT"
 
 if __name__ == "__main__":
     unittest.main()

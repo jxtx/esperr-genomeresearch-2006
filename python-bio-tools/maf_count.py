@@ -1,29 +1,34 @@
 #!/usr/bin/env python2.3
 
 """
-Read a MAF from standard input and count alignments, bases, or columns. 
+Read a MAF from standard input and print counts of alignments, bases, or columns. 
+
+usage: %prog [options]
+   -c, --cols: count alignment columns rather than number of alignments
+   -b, --bases: count bases in first species rather than number of alignments
+   -e, --each: print a count for each alignment rather than whole file
+   -r, --ref=N: reference sequence (first by default, 0..n)
 """
 
+import cookbook.doc_optparse
 import sys
 
 from align import maf
-from optparse import OptionParser
+
 
 def __main__():
 
-    # Parse command line arguments
+    options, args = cookbook.doc_optparse.parse( __doc__ )
 
-    parser = OptionParser()
-    parser.add_option( "-c", "--cols",  action="store_const", dest="action", const="cols" )
-    parser.add_option( "-b", "--bases", action="store_const", dest="action", const="bases" )
-    parser.add_option( "-e", "--each", action="store_true", dest="each" )
-
-    ( options, args ) = parser.parse_args()
-
-    action = "aligns"
-    if options.action: action = options.action
-    
-    print_each = bool( options.each )
+    try:
+        if options.cols: action = "cols"
+        elif options.bases: action = "bases"
+        else: action = "aligns"
+        print_each = bool( options.each )
+        if options.ref: ref = int( options.ref )
+        else: ref = 0
+    except:
+        cookbook.doc_optparse.exit()
 
     maf_reader = maf.Reader( sys.stdin )
 
@@ -33,7 +38,7 @@ def __main__():
         
         if action == "aligns": count += 1
         elif action == "cols": count += m.text_size
-        elif action == "bases": count += m.components[0].size
+        elif action == "bases": count += m.components[ref].size
 
         if print_each: 
             print count
