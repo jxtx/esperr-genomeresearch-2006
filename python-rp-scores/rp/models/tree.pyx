@@ -20,6 +20,7 @@ cdef Node* new_node( int radix ):
     cdef Node* node
     cdef int i
     node = <Node*> malloc( sizeof( Node ) )
+    if node == NULL: return NULL
     node.children = <Node**> malloc( radix * sizeof( Node* ) )
     node.vals = <float*> malloc( radix * sizeof( float ) )
     for i from 0 <= i < radix: 
@@ -31,18 +32,20 @@ cdef Node* clone_node( int radix, Node* node ):
     cdef Node* rval
     cdef int i
     rval = new_node( radix )
+    if rval == NULL: return NULL
     for i from 0 <= i < radix:
         rval.vals[i] = node.vals[i]
 
 cdef free_node( Node* node, int radix ):
     cdef int i
+    if node == NULL: return
     for i from 0 <= i < radix: 
         if node.children[i] != NULL:
             free( node.children[i] )
     free( node.vals )
     free( node )
     
-cdef count( int order, int radix, int* s, int slen, Node* root ):
+cdef int count( int order, int radix, int* s, int slen, Node* root ):
     cdef Node *cur
     cdef int i, j, symbol, prefix_symbol
     # Loop over every prefix of the string
@@ -51,20 +54,24 @@ cdef count( int order, int radix, int* s, int slen, Node* root ):
         symbol = s[ i ]
         root.vals[ symbol ] = root.vals[ symbol ] + 1
         # Walk back along the prefix up to 'order' symbols
-        for j from 1 <= j < order:
+        for j from 1 <= j <= order:
             if i - j < 0: break
             prefix_symbol = s[i-j]
             if cur.children[prefix_symbol] == NULL:
                 cur.children[prefix_symbol] = new_node( radix )
+                if cur.children[prefix_symbol] == NULL: return 0
             cur = cur.children[prefix_symbol]
             cur.vals[ symbol ] = cur.vals[ symbol ] + 1
+    return 1
 
-cdef fill_in_counts( int order, int radix, Node* counts, strings ):
+cdef int fill_in_counts( int order, int radix, Node* counts, strings ):
     cdef int* buf
     cdef int buf_len
     for string in strings:
         PyObject_AsReadBuffer( string, <void**> &buf, &buf_len )
-        count( order, radix, buf, buf_len / sizeof( int ), counts )
+        if count( order, radix, buf, buf_len / sizeof( int ), counts ) == 0:
+            return 0
+    return 1
 
 cdef to_probs( int radix, Node* node ):
     cdef int i, total, some_zero
@@ -87,6 +94,8 @@ cdef Node* to_scores( int radix, Node* probs1, Node* probs2 ):
     cdef Node* rval
     cdef int i, j
     rval = new_node( radix )
+    if rval == NULL:
+        return NULL
     for i from 0 <= i < radix:
         rval.vals[i] = ( log( probs1.vals[i] ) - log( probs2.vals[i] ) )
     for i from 0 <= i < radix:
@@ -94,10 +103,16 @@ cdef Node* to_scores( int radix, Node* probs1, Node* probs2 ):
             continue
         elif probs1.children[i] == NULL:
             probs1.children[i] = new_node( radix )
+            if probs1.children[i] == NULL:
+                free_node( rval, radix )
+                return NULL
             for j from 0 <= j < radix:
                 probs1.children[i].vals[j] = probs1.vals[j]
         elif probs2.children[i] == NULL:
             probs2.children[i] = new_node( radix )
+            if probs2.children[i] == NULL:
+                free_node( rval, radix )
+                return NULL
             for j from 0 <= j < radix:
                 probs2.children[i].vals[j] = probs2.vals[j]
         rval.children[i] = to_scores( radix, probs1.children[i], probs2.children[i] )
@@ -107,19 +122,20 @@ cdef score_string( int order, int radix, Node* tree, int* text, int start, int l
     cdef int i, j, good, words, symbol, prefix_symbol
     cdef float score
     cdef Node* cur
+    score = 0
     words = 0
     for i from start <= i < start + length:
         # First, is it a valid word -- may be too stringent but consistent with fixed order
         if i - order < 0: continue
         good = 1
-        for j from 0 <= j < order:
+        for j from 0 <= j <= order:
             if text[i-j] < 0: 
                 good = 0
         if good == 0: continue
         # Now walk back and score
         cur = tree        
         symbol = text[i]
-        for j from 1 <= j < order:
+        for j from 1 <= j <= order:
             if i - j < 0: break
             prefix_symbol = text[i-j]
             # If we can't go back any further, use this context
@@ -134,7 +150,6 @@ cdef score_string( int order, int radix, Node* tree, int* text, int start, int l
         return None
 
 cdef print_node( int level, int radix, Node* node ):
-    
     print "Node: [", 
     for i in range( 0, radix ): print str(node.vals[i]) + ",",
     print "],"
@@ -170,7 +185,6 @@ cdef class Model:
         else:
             assert start + length <= buf_len
         s = score_string( self.order, self.radix, self.tree, buf, start, length )
-        # str( s )
         if s is None: raise "No valid data in region to be scored"
         return s
 
@@ -187,14 +201,19 @@ def train( int order, int radix, pos_strings, neg_strings ):
     cdef Model rval
 
     pos_node = new_node( radix )
-    fill_in_counts( order, radix, pos_node, pos_strings )
+    if pos_node == NULL: raise "Malloc failed creating pos root"
+    if fill_in_counts( order, radix, pos_node, pos_strings ) == 0:
+        raise "Malloc failed, filling in pos counts"
     to_probs( radix, pos_node )
 
     neg_node = new_node( radix )
-    fill_in_counts( order, radix, neg_node, neg_strings )
+    if neg_node == NULL: raise "Malloc failed creating neg root"
+    if fill_in_counts( order, radix, neg_node, neg_strings ) == 0:
+        raise "Malloc failed, filling in neg counts"
     to_probs( radix, neg_node )
 
     scores = to_scores( radix, pos_node, neg_node )
+    if scores == NULL: raise "Malloc failed build score tree"
 
     free_node( pos_node, radix )
     free_node( neg_node, radix )

@@ -16,6 +16,7 @@ import array
 import cookbook.doc_optparse
 import sys
 import traceback
+import time
 
 import rp.cv
 import rp.io
@@ -33,17 +34,19 @@ def run( pos_file, neg_file, format, mapping, radix, orders, modname ):
         if mapping: radix = mapping.get_out_size()
         else: radix = max( map( max, pos_strings ) + map( max, neg_strings ) ) + 1
 
-    print "Order     TP  ~TP  ~FP   FP   FN  ~FN  ~TN   TN      %"
+    print "Order     TP  ~TP  ~FP   FP   FN  ~FN  ~TN   TN      %    time"
 
     # Cross validate for various orders
     for order in orders:
         model_factory = lambda d0, d1: rp.models.get( modname ).train( order, radix, d0, d1 )
         cv_engine = rp.cv.CV( model_factory, pos_strings, neg_strings )
+        start_time = time.time()
         cv_engine.run()
+        seconds = time.time() - start_time
 
         print "%5d  " % order,
         print cv_engine.cls1, cv_engine.cls2,
-        print "  %2.2f" % cv_engine.get_success_rate()
+        print "  %2.2f    %2.2f" % ( cv_engine.get_success_rate(), seconds )
         
 def main():
 
