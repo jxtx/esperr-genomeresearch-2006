@@ -1,6 +1,3 @@
-cdef extern from "stdio.h":
-    int printf(char *format,...)
-
 cdef extern from "Python.h":
     int PyObject_AsReadBuffer(object obj, void **buffer, int *buffer_len) except -1
 
@@ -16,7 +13,6 @@ cdef extern from "standard_model_helper.h":
     real* probs_to_score_matrix( int order, int radix, real** pos_probs, real** neg_probs )
     void free_scores( real* scores )
     bool score_string( int order, int radix, real* score_matrix, int* string, int start, int length, real* rval )
-    real test()
 
 import sys
 from array import array
@@ -113,6 +109,9 @@ def train( int order, int radix, pos_strings, neg_strings ):
 
     pos_counts = new_counts( order, radix )
     neg_counts = new_counts( order, radix )
+    
+    if pos_counts == NULL or neg_counts == NULL: 
+        raise "Malloc failed (counts)"
 
     fill_in( order, radix, pos_counts, pos_strings )
     fill_in( order, radix, neg_counts, neg_strings )
@@ -120,10 +119,16 @@ def train( int order, int radix, pos_strings, neg_strings ):
     pos_probs = counts_to_probs( order, radix, pos_counts )
     neg_probs = counts_to_probs( order, radix, neg_counts )
 
+    if pos_counts == NULL or neg_counts == NULL: 
+        raise "Malloc failed (probs)"
+
     free_counts( pos_counts, order )
     free_counts( neg_counts, order )
 
     scores = probs_to_score_matrix( order, radix, pos_probs, neg_probs )
+
+    if scores == NULL: 
+        raise "Malloc failed (scores)"
 
     free_probs( pos_probs, order )
     free_probs( neg_probs, order )

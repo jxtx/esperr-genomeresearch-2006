@@ -1,8 +1,11 @@
 import align.maf
 import array
 import alphabet
-import seq_numarray
 import sys
+
+from Numeric import array
+
+import rp.mapping
 
 def get_reader( f, format=None, mapping=None ):
     # Open correct reader for format
@@ -16,18 +19,8 @@ def get_reader( f, format=None, mapping=None ):
     # Force result to return int arrays
     while 1:
         x = source.next()
-        if not x: break
-        yield array.array( 'i', list( x ) )
-
-class Reader( object ):
-    def __init__( self, source ):
-        self.source = source
-    def __iter__( self ):
-        return self
-    def next( self ):
-        x = self.source.next()
-        if x is None: raise StopIteration
-        return array.array( 'i', list( self.source.next() ) )
+        if x is None: break
+        yield x
 
 class MappingSource( object ):
     def __init__( self, other, mapping ):
@@ -36,7 +29,7 @@ class MappingSource( object ):
     def next( self ):
         x = self.other.next()
         if x is None: return None
-        return self.mapping.translate( self.other.next() )
+        return self.mapping.translate( x )
 
 class IntSource( object ):
     def __init__( self, f ):
@@ -44,7 +37,7 @@ class IntSource( object ):
     def next( self ):
         line = self.f.readline()
         if not line: return None
-        return map( int, line.split() )
+        return array( map( int, line.split() ), 'i' )
 
 class MAFSource( object ):
     def __init__( self, f ):
@@ -52,5 +45,5 @@ class MAFSource( object ):
     def next( self ):
         maf = self.reader.next()
         if maf is None: return None
-        ints = seq_numarray.DNA.translate_alignment( [ c.text for c in maf.components ] )
+        ints = rp.mapping.DNA.translate_list( [ c.text for c in maf.components ] )
         return ints

@@ -20,7 +20,7 @@ import traceback
 from rp import io, standard_model
 
 def run( data_file, model_file, out_file, format, mapping ):
-    
+
     # Read model
     model = standard_model.from_file( model_file )
     order = model.get_order()
@@ -31,23 +31,23 @@ def run( data_file, model_file, out_file, format, mapping ):
 
     # Score each
     for string in strings:
-	score = model.score( string, 0, len( string ) )
-	print >>out, score  
+        score = model.score( string, 0, len( string ) )
+        print >>out, score
 
 def main():
-    
+
     # Parse command line
     try:
         options, args = cookbook.doc_optparse.parse( __doc__ )
         data_fname, model_fname, out_fname = args
-        if options.mapping: 
+        if options.mapping:
             mapping = alphabet.Mapping( file( options.mapping ) )
-        else: 
+        else:
             mapping = None
     except:
         cookbook.doc_optparse.exit()
 
-    out = open( out_fname, "w" )   
+    out = open( out_fname, "w" )
     run( open( data_fname ), open( model_fname ), out, options.format, mapping )
     out.close()
 

@@ -51,11 +51,16 @@ int** new_counts( int order, int radix )
     int i, size;
     int** result = (int**) malloc( ( order + 1 ) * sizeof( int* ) );
 
+    if ( result == NULL ) return NULL;
+
     for ( i = 0; i < order + 1; i++ )
     {
         size = matrix_size( i, radix ) * sizeof( int );
             
         result[i] = (int*) malloc( size );
+        
+        if ( result[i] == NULL ) return NULL;
+        
         memset( result[i], 0, size );
     }
 
@@ -77,6 +82,7 @@ void free_counts( int** v, int order )
 real* new_real_array( int size )
 {
     real* result = ( real* ) malloc( size * sizeof( real ) );
+    if ( result == NULL ) return NULL;
     memset( result, 0, size * sizeof( real ) );
     return result;
 }
@@ -85,6 +91,7 @@ real** new_probs( int order, int radix )
 {
     int i;
     real** result = (real**) malloc( ( order + 1 ) * sizeof( real* ) );
+    if ( result == NULL ) return NULL;
 
     for ( i = 0; i < order + 1; i++ )
     {
@@ -140,6 +147,7 @@ real** counts_to_probs( int order, int radix, int** counts )
     bool some_zero;
 
     real** probs = new_probs( order, radix );
+    if ( probs == NULL ) return NULL;
 
     for ( i = 0; i < order+1; i++ )
     {
@@ -202,6 +210,8 @@ real* probs_to_score_matrix( int order, int radix, real** pos_probs, real** neg_
 
     int size = matrix_size( order, radix );
     real* scores = new_real_array( size );
+
+    if ( scores == NULL ) return NULL;
 
     for ( i = 0; i < size; i++ )
     {

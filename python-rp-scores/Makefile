@@ -1,5 +1,6 @@
 inplace: setup
 	cp target/rp/standard_model.so rp
+	cp target/rp/mapping_helper.so rp
 
 setup:
 	mkdir -p target
