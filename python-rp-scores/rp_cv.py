@@ -58,6 +58,7 @@ def main():
         pos_fname, neg_fname = args
         orders = map( int, getattr( options, 'orders' ).split( ',' ) )
         radix = getattr( options, 'radix', None )
+        if radix: radix = int( radix )
         modname = getattr( options, 'model' )
         if modname is None: modname = 'standard'
         if options.mapping:
