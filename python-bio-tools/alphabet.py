@@ -1,5 +1,7 @@
 from numarray import *
 
+"""Test"""
+
 import seq_numarray
 
 DNA_BASE=5
