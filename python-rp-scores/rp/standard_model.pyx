@@ -7,7 +7,7 @@ cdef extern from "standard_model_helper.h":
     int** new_counts( int order, int radix )
     void free_counts( int** v, int order )
     void fill_in_counts( int order, int radix, int** counts, int* string, int string_len )
-    real** counts_to_probs( int order, int radix, int** counts )
+    real** counts_to_probs( int order, int radix, int** counts, bool average )
     void free_probs( real** probs, int order )
     real* new_real_array( int size )
     real* probs_to_score_matrix( int order, int radix, real** pos_probs, real** neg_probs )
@@ -95,7 +95,7 @@ def from_file( f ):
     rval.init( order, radix, scores )
     return rval
 
-def train( int order, int radix, pos_strings, neg_strings ):
+def train( int order, int radix, pos_strings, neg_strings, bool average=0 ):
     
     cdef int** pos_counts
     cdef int** neg_counts
@@ -116,8 +116,8 @@ def train( int order, int radix, pos_strings, neg_strings ):
     fill_in( order, radix, pos_counts, pos_strings )
     fill_in( order, radix, neg_counts, neg_strings )
     
-    pos_probs = counts_to_probs( order, radix, pos_counts )
-    neg_probs = counts_to_probs( order, radix, neg_counts )
+    pos_probs = counts_to_probs( order, radix, pos_counts, average )
+    neg_probs = counts_to_probs( order, radix, neg_counts, average )
 
     if pos_counts == NULL or neg_counts == NULL: 
         raise "Malloc failed (probs)"

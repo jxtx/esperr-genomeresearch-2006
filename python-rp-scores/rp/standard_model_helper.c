@@ -140,9 +140,9 @@ void fill_in_counts( int order, int radix, int** counts, int* string, int string
     }
 }
 
-real** counts_to_probs( int order, int radix, int** counts )
+real** counts_to_probs( int order, int radix, int** counts, bool average )
 {
-    int i, row_start, max_index, j, total, index;
+    int i, row_start, size, prev_size, j, total, index;
     real prob;
     bool some_zero;
 
@@ -151,9 +151,10 @@ real** counts_to_probs( int order, int radix, int** counts )
 
     for ( i = 0; i < order+1; i++ )
     {
-        max_index = matrix_size( i, radix );
+        size = matrix_size( i, radix );
+	prev_size = matrix_size( i - 1, radix );
 
-        for ( row_start = 0; row_start < max_index; row_start += radix )
+        for ( row_start = 0; row_start < size; row_start += radix )
         {
             total = 0;
             some_zero = false;
@@ -162,7 +163,7 @@ real** counts_to_probs( int order, int radix, int** counts )
             {
                 index = row_start + j;
 
-                assert( index >= 0 && index < max_index );
+                assert( index >= 0 && index < size );
 
                 if ( counts[ i ][ index ] == 0 )
                 {
@@ -178,11 +179,11 @@ real** counts_to_probs( int order, int radix, int** counts )
             {
                 index = row_start + j;
 
-                assert( index >= 0 && index < max_index );
+                assert( index >= 0 && index < size );
 
                 if ( total == 0 && i > 0 )
                 {
-                    prob = probs[ i - 1 ][ index % matrix_size( i - 1, radix ) ];
+                    prob = probs[ i - 1 ][ index % prev_size ];
                 }
                 else
                 {
@@ -196,7 +197,14 @@ real** counts_to_probs( int order, int radix, int** counts )
                     }
                 }
 
-                probs[ i ][ index ] = prob;
+		if ( average && i > 0 )
+		{
+		    probs[ i ][ index ] = prob + probs[ i - 1 ][ index % prev_size ];
+		}
+		else
+		{
+		    probs[ i ][ index ] = prob;
+		}
             }
         }
     }
