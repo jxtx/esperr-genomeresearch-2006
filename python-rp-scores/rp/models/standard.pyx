@@ -10,7 +10,7 @@ cdef extern from "standard_core.h":
     real** counts_to_probs( int order, int radix, int** counts, bool average )
     void free_probs( real** probs, int order )
     real* new_real_array( int size )
-    real* probs_to_score_matrix( int order, int radix, real** pos_probs, real** neg_probs )
+    real* probs_to_score_matrix( int order, int radix, real** pos_probs, real** neg_probs, bool averaging )
     void free_scores( real* scores )
     bool score_string( int order, int radix, real* score_matrix, int* string, int start, int length, real* rval )
 
@@ -50,7 +50,7 @@ cdef class StandardModel:
         if length < 0:
             length = buf_len
         else:
-            assert start + length <= buf_len / sizeof( int )
+            assert start + length <= buf_len
         if score_string( self.order, self.radix, self.scores, buf, start, length, &rval ):
             return rval
         else:
@@ -95,7 +95,7 @@ def from_file( f ):
     rval.init( order, radix, scores )
     return rval
 
-def train( int order, int radix, pos_strings, neg_strings, bool average=0 ):
+def train( int order, int radix, pos_strings, neg_strings, bool averaging=0 ):
     
     cdef int** pos_counts
     cdef int** neg_counts
@@ -116,8 +116,8 @@ def train( int order, int radix, pos_strings, neg_strings, bool average=0 ):
     fill_in( order, radix, pos_counts, pos_strings )
     fill_in( order, radix, neg_counts, neg_strings )
     
-    pos_probs = counts_to_probs( order, radix, pos_counts, average )
-    neg_probs = counts_to_probs( order, radix, neg_counts, average )
+    pos_probs = counts_to_probs( order, radix, pos_counts, averaging )
+    neg_probs = counts_to_probs( order, radix, neg_counts, averaging )
 
     if pos_counts == NULL or neg_counts == NULL: 
         raise "Malloc failed (probs)"
@@ -125,7 +125,8 @@ def train( int order, int radix, pos_strings, neg_strings, bool average=0 ):
     free_counts( pos_counts, order )
     free_counts( neg_counts, order )
 
-    scores = probs_to_score_matrix( order, radix, pos_probs, neg_probs )
+    scores = probs_to_score_matrix( order, radix, 
+                                    pos_probs, neg_probs, averaging )
 
     if scores == NULL: 
         raise "Malloc failed (scores)"

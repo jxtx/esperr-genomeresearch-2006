@@ -10,7 +10,7 @@ void fill_in_counts( int order, int radix, int** counts, int* string, int string
 real** counts_to_probs( int order, int radix, int** counts, bool average );
 void free_probs( real** probs, int order );
 real* new_real_array( int size );
-real* probs_to_score_matrix( int order, int radix, real** pos_probs, real** neg_probs );
+real* probs_to_score_matrix( int order, int radix, real** pos_probs, real** neg_probs, bool averaging );
 void free_scores( real* scores );
 bool score_string( int order, int radix, real* score_matrix, int* string, int start, int length, real* rval );
 

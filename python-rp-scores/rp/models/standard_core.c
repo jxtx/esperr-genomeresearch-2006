@@ -213,18 +213,31 @@ real** counts_to_probs( int order, int radix, int** counts, bool average )
 }
 
 real* probs_to_score_matrix( int order, int radix, 
-                             real** pos_probs, real** neg_probs )
+                             real** pos_probs, real** neg_probs, 
+                             bool averaging )
 {
     int i;
 
     int size = matrix_size( order, radix );
     real* scores = new_real_array( size );
+    real log_order = log( order );
 
     if ( scores == NULL ) return NULL;
 
     for ( i = 0; i < size; i++ )
     {
-        scores[i] = log( pos_probs[order][i] ) - log( neg_probs[order][i] );
+        // If averaging the probs need to be divided by the order
+        
+        if ( averaging )
+        {
+            scores[i] = ( log( pos_probs[order][i] ) - log_order ) 
+                      - ( log( neg_probs[order][i] ) - log_order );   
+        }
+        else
+        {
+            scores[i] = log( pos_probs[order][i] ) 
+                      - log( neg_probs[order][i] );
+        }
     }
 
     return scores;

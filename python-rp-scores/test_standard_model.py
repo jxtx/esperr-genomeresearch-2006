@@ -1,4 +1,5 @@
 import rp_train
+import rp_score
 import unittest
 import rp.mapping
 
@@ -21,7 +22,7 @@ class TestCase( unittest.TestCase ):
                       
         expected = open( "test_data/compare/hm.5a_scoreMatrix.txt" )
         
-        compare_sm( out, expected )
+        compare_floats( out, expected, 2 )
         
     def test_train_from_ints( self ):
         
@@ -37,10 +38,25 @@ class TestCase( unittest.TestCase ):
                       
         expected = open( "test_data/compare/hm.5a_scoreMatrix.txt" )
         
-        compare_sm( out, expected )
+        compare_floats( out, expected, 2 )
         
-def compare_sm( a, b ):
-    for line1, line2 in zip( a, b ):
+    def test_score_ints( self ):
+        
+        out = StringIO()
+        
+        rp_score.run( open( "test_data/reg.ints" ), 
+                      open( "test_data/hm.5a.sm" ), 
+                      out, 
+                      None, 
+                      None )
+          
+        expected = open( "test_data/compare/reg_hm_5a_scores.txt" )
+        
+        compare_floats( out, expected )
+        
+        
+def compare_floats( a, b, skip=0 ):
+    for line1, line2 in zip( list(a)[skip:], list(b)[skip:] ):
         assert round( float( a ), 9 ) == round( float( b ), 9 )
         
 if __name__ == "__main__": unittest.main()

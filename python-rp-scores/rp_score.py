@@ -28,12 +28,12 @@ def run( data_file, model_file, out_file, format, mapping ):
     radix = model.get_radix()
 
     # Read integer sequences
-    strings = rp.io.get_reader( open( data_fname ), format, mapping )
+    strings = rp.io.get_reader( data_file, format, mapping )
 
     # Score each
     for string in strings:
-        score = model.score( string, 0, len( string ) )
-        print >>out, score
+        score = model.score( string )
+        print >>out_file, score
 
 def main():
 
