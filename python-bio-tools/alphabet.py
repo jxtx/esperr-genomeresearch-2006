@@ -1,10 +1,11 @@
 from numarray import *
 
-"""Test"""
-
 import seq_numarray
 
 DNA_BASE=5
+
+## FIXME: Is DNA_BASE really neccesary? This should be able to map from
+##        any integer alphabet to any other.
 
 class Mapping( object ):
     def __init__( self, f=None ):
@@ -29,6 +30,17 @@ class Mapping( object ):
         self.symbol_count = max_symbol + 1
         self.reverse_table = [ reverse_map[ index ] for index in range( 0, self.symbol_count ) ]
 
+    def collapse( self, a, b ):
+        copy = Mapping()
+        copy.align_count = self.align_count
+        copy.symbol_count = self.symbol_count - 1
+        table = self.table.copy()
+        for i in range( len( table ) ):
+            if table[i] == b: table[i] = a
+            elif table[i] == copy.symbol_count: table[i] = b
+        copy.table = table
+        return copy
+        
     def translate_alignment( self, seqs ):
         return self.translate( seq_numarray.DNA.translate_alignment( seqs ) )
 

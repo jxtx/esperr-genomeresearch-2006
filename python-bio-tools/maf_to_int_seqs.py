@@ -24,17 +24,19 @@ import sys
 
 def main():
 
-    alpha_map = alphabet.Mapping( file( sys.argv[1] ) )
-    symbol_count = alpha_map.symbol_count
-    align_count = alpha_map.align_count
+    if len( sys.argv ) > 1:
+        alpha_map = alphabet.Mapping( file( sys.argv[1] ) )
+    else:
+        alpha_map = None
 
     for maf in align.maf.Reader( sys.stdin ):
         # Translate alignment to ints
         int_seq = seq_numarray.DNA.translate_alignment( [ c.text for c in maf.components ] )
         # Apply mapping 
-        int_seq = alpha_map.translate( int_seq )
+        if alpha_map:
+            int_seq = alpha_map.translate( int_seq )
         # Write ints separated by spaces
-        for i in int_seq: print foo[i],
+        for i in int_seq: print i,
         print
 
 if __name__ == "__main__": main()

@@ -9,7 +9,8 @@ from optparse import OptionParser
 
 def __main__():
 
-    if len( sys.argv ) > 1: fraction = float( sys.argv[1] )
+    #if len( sys.argv ) > 1: fraction = float( sys.argv[1] )
+    if len( sys.argv ) > 1: sample_size = int( sys.argv[1] )
 
     maf_reader = maf.Reader( sys.stdin )
     maf_writer = maf.Writer( sys.stdout )
@@ -20,9 +21,8 @@ def __main__():
 
     random.shuffle( mafs )
 
-    count = len( mafs )
-    if fraction: count = int( floor( count * fraction ) )
+    if not sample_size: sample_size = len( mafs )
 
-    for i in range( 0, count ): maf_writer.write( mafs[ i ] )
+    for i in range( 0, sample_size ): maf_writer.write( mafs[ i ] )
     
 if __name__ == "__main__": __main__()

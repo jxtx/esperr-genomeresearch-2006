@@ -1,4 +1,4 @@
-class Alignment:
+class Alignment( object ):
 
     def __init__( self, score=0, attributes={} ):
         self.score = 0
@@ -44,7 +44,7 @@ class Alignment:
         for i in range( self.text_size ):
             yield [ c.text[i] for c in self.components ]
     
-class Component:
+class Component( object ):
 
     def __init__( self, src='', start=0, size=0, strand=None, src_size=0, text='' ):
         self.src = src

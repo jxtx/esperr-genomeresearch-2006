@@ -4,10 +4,13 @@ import sys
 
 def main():
     pad = "\t"
+    align = None
     if len( sys.argv ) > 1:
         pad = " " * int( sys.argv[1] )
+    if len( sys.argv ) > 2:
+        align = sys.argv[2]
     rows = [ line.split() for line in sys.stdin ]
-    print_tabular( rows, pad )
+    print_tabular( rows, pad, align )
 
 def print_tabular( rows, pad, align=None ):
     if len( rows ) == 0: return ""
@@ -16,13 +19,13 @@ def print_tabular( rows, pad, align=None ):
         for i in range( 0, len( row ) ):
             lengths[ i ] = max( lengths[ i ], len( row[ i ] ) )
     rval = ""
-    for i in range( len( rows[0] ) ):
-        if align and align[ i ] == "l":
-            rval += str( i ).ljust( lengths[ i ] )
-        else:
-            rval += str( i ).rjust( lengths[ i ] )
-        rval += pad 
-    print rval   
+    #for i in range( len( rows[0] ) ):
+    #    if align and align[ i ] == "l":
+    #        rval += str( i ).ljust( lengths[ i ] )
+    #    else:
+    #        rval += str( i ).rjust( lengths[ i ] )
+    #    rval += pad 
+    #print rval   
     for row in rows:
         rval = ""
         for i in range( 0, len( row ) ):

@@ -2,7 +2,7 @@ from align import *
 
 # Tools for dealing with multiple alignments in MAF format
 
-class Reader:
+class Reader( object ):
 
     def __init__( self, file ):
         self.file = file
@@ -43,15 +43,22 @@ class Reader:
         return alignment
 
     def __iter__( self ):
-        while 1:
-            v = self.next()
-            if not v: break
-            yield v
+        return ReaderIter( self )
 
     def close( self ):
         self.file.close()
 
-class Writer:
+class ReaderIter( object ):
+    def __init__( self, reader ):
+        self.reader = reader
+    def __iter__( self ): 
+        return self
+    def next( self ):
+        v = self.reader.next()
+        if not v: raise StopIteration
+        return v
+
+class Writer( object ):
 
     def __init__( self, file, attributes={} ):
         self.file = file

@@ -8,16 +8,21 @@ from __future__ import division
 
 import textwrap
 import sys
-import cookbook.doc_optparse
 from align import maf
-from optparse import OptionParser
 
 def __main__():
 
     maf_reader = maf.Reader( sys.stdin )
 
+    if len( sys.argv ) > 1:
+        comps = map( int, sys.argv[1:] )
+    else:
+        comps = None    
+
     for i, m in enumerate( maf_reader ):
-        for c in m.components:
+        if comps: l = [ m.components[i] for i in comps ]
+        else: l = m.components
+        for c in l:
             print ">%s:%d-%d" % ( c.src, c.start, c.end )
             print_n( c.text, 50 )
 
