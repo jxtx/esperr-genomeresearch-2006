@@ -54,7 +54,7 @@ def main():
         window = int( getattr( options, 'window', 100 ) )
         shift = int( getattr( options, 'shift', 5 ) )
         if options.mapping:
-            mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
+            align_count, mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
         else:
             mapping = None
     except:

@@ -8,24 +8,30 @@ cdef extern from "Python.h":
     int PyString_AsStringAndSize(object, char **, int *) except -1
 
 from Numeric import zeros
+from math import floor
 
 cdef class CharToIntArrayMapping:
     """Mapping for converting strings to int arrays"""
     
     cdef int table[256]
     cdef int out_size
+    cdef object reverse_table
     
     def __new__( self ):
         """Init empty mapping (all characters map to -1)"""
         cdef int i
         for i from 0 <= i < 256: self.table[i] = -1
         self.out_size = 0
+        
+    def __init__( self ):
+        self.reverse_table = dict()
 
     def set_mapping( self, char char, int symbol ):
         """Modify mapping so 'chars' map to 'symbol'"""
         self.table[ char ] = symbol
         if self.out_size <= symbol:
             self.out_size = symbol + 1
+        self.reverse_table[ symbol ] = chr( char )
 
     def translate( self, string ):
         """Translate 'string' and return as int array"""
@@ -67,6 +73,16 @@ cdef class CharToIntArrayMapping:
             for i from 0 <= i < text_len:
                 t_buf[i] = t_buf[i] + ( self.table[ s_buf[i] ] * factor )
             factor = factor * self.out_size
+        return rval
+        
+    def reverse_map( self, val, nseqs ):
+        factor = self.out_size ** (nseqs-1)
+        rval = []
+        while factor > 0:
+            rval.append( self.reverse_table[ int( floor( val / factor ) ) ] )
+            val = val - ( floor(val/factor) * factor )
+            factor = floor( factor / self.out_size )
+        rval.reverse()
         return rval
          
 cdef class IntToIntMapping:

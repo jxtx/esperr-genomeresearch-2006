@@ -5,17 +5,17 @@ from mapping_helper import *
 DNA_BASE=5
                 
 DNA = CharToIntArrayMapping()
-DNA.set_mapping( "A", 0 )
 DNA.set_mapping( "a", 0 )
-DNA.set_mapping( "C", 1 )
+DNA.set_mapping( "A", 0 )
 DNA.set_mapping( "c", 1 )
-DNA.set_mapping( "G", 2 )
+DNA.set_mapping( "C", 1 )
 DNA.set_mapping( "g", 2 )
-DNA.set_mapping( "T", 3 )
+DNA.set_mapping( "G", 2 )
 DNA.set_mapping( "t", 3 )
-DNA.set_mapping( "-", 4 )
+DNA.set_mapping( "T", 3 )
 DNA.set_mapping( "N", 4 )
 DNA.set_mapping( "n", 4 )
+DNA.set_mapping( "-", 4 )
 
 # Creating mappings
 
@@ -36,4 +36,5 @@ def alignment_mapping_from_file( f ):
         index = DNA.translate_list( list( column ) )[0]
         mapping.set_mapping( index, symbol )
 
-    return mapping
+    return align_count, mapping
+    

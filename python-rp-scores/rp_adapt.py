@@ -31,7 +31,7 @@ passes = 10
 order = 1
 model = rp.models.averaging
 
-def run( pos_file, neg_file, out_dir, format, mapping ):
+def run( pos_file, neg_file, out_dir, format, align_count, mapping ):
 
     # Open merit output
     merit_out = open( os.path.join( out_dir, 'merits.txt' ), 'w' )
@@ -77,7 +77,8 @@ def run( pos_file, neg_file, out_dir, format, mapping ):
         
         # Write best mapping to a file
         mapping_out = open( os.path.join( out_dir, "%03d.mapping" % symbol_count ), 'w' )
-        for symbol in best_mapping.get_table(): print >>mapping_out, symbol
+        for i, symbol in enumerate( best_mapping.get_table() ): 
+            print >>mapping_out, str.join( '', rp.mapping.DNA.reverse_map( i, align_count ) ), symbol
         mapping_out.close()
 
 def calc_merit( pos_strings, neg_strings, mapping ):
@@ -99,11 +100,11 @@ def main():
 
     try:
         pos_fname, neg_fname, out_dir = args
-        mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
+        align_count, mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
     except:
         cookbook.doc_optparse.exit()
 
-    run( open( pos_fname ), open( neg_fname ), out_dir, options.format, mapping )
+    run( open( pos_fname ), open( neg_fname ), out_dir, options.format, align_count, mapping )
 
 
 if __name__ == "__main__": main()

@@ -58,7 +58,7 @@ def main():
         modname = getattr( options, 'model' )
         if modname is None: modname = 'standard'
         if options.mapping:
-            mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
+            align_count, mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
         else:
             mapping = None
     except:
