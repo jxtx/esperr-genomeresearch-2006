@@ -18,7 +18,8 @@ class TestCase( unittest.TestCase ):
                       'maf', 
                       mapping, 
                       None, 
-                      2 )
+                      2,
+                      'standard' )
                       
         expected = open( "test_data/compare/hm.5a_scoreMatrix.txt" )
         
@@ -34,7 +35,8 @@ class TestCase( unittest.TestCase ):
                       None, 
                       None, 
                       None, 
-                      2 )
+                      2,
+                      'standard' )
                       
         expected = open( "test_data/compare/hm.5a_scoreMatrix.txt" )
         
@@ -48,7 +50,8 @@ class TestCase( unittest.TestCase ):
                       open( "test_data/hm.5a.sm" ), 
                       out, 
                       None, 
-                      None )
+                      None,
+                      'standard' )
           
         expected = open( "test_data/compare/reg_hm_5a_scores.txt" )
         

@@ -8,6 +8,7 @@ usage: %prog pos_data neg_data [options]
    -m, --mapping=FILE: A mapping (alphabet reduction) to apply to each sequence (optional)
    -r, --radix=N:      Radix (optional)
    -o, --orders=N,...:   Orders to cross validate over
+   -M, --model=name:   Name of model to train (default 'standard')
 """
 
 import align.maf
@@ -19,9 +20,9 @@ import traceback
 import rp.cv
 import rp.io
 import rp.mapping
-import rp.models.standard
+import rp.models
 
-def run( pos_file, neg_file, format, mapping, radix, orders ):
+def run( pos_file, neg_file, format, mapping, radix, orders, modname ):
 
     # Read integer sequences
     pos_strings = list( rp.io.get_reader( pos_file, format, mapping ) )
@@ -34,7 +35,7 @@ def run( pos_file, neg_file, format, mapping, radix, orders ):
 
     # Cross validate for various orders
     for order in orders:
-        model_factory = lambda d0, d1: rp.models.standard.train( order, radix, d0, d1 )
+        model_factory = lambda d0, d1: rp.models.get( modname ).train( order, radix, d0, d1 )
         cv_engine = rp.cv.CV( model_factory, pos_strings, neg_strings )
         cv_engine.run()
 
@@ -54,6 +55,8 @@ def main():
         pos_fname, neg_fname = args
         orders = map( int, getattr( options, 'orders' ).split( ',' ) )
         radix = getattr( options, 'radix', None )
+        modname = getattr( options, 'model' )
+        if modname is None: modname = 'standard'
         if options.mapping:
             mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
         else:
@@ -61,7 +64,7 @@ def main():
     except:
         cookbook.doc_optparse.exit()
 
-    run( open( pos_fname ), open( neg_fname ), options.format, mapping, radix, orders )
+    run( open( pos_fname ), open( neg_fname ), options.format, mapping, radix, orders, modname )
 
 
 if __name__ == "__main__": main()
