@@ -26,7 +26,7 @@ import rp.models.averaging
 import pypar 
 nodes = pypar.size() 
 node_id = pypar.rank() 
-print "I am node %d of %d" % ( nodes, node_id )
+print "I am node %d of %d" % ( node_id, nodes )
 
 # Things that shouldn't be hardcoded'
 stop_size = 5
@@ -47,8 +47,9 @@ def run( pos_file, neg_file, out_dir, format, mapping ):
     symbol_count = mapping.get_out_size()
 
     # Collapse
-    while symbol_count > STOP_SIZE:
+    while symbol_count > stop_size:
 
+        # Sync nodes on each pass, may not be required
         pypar.barrier()
 
         if node_id == 0:
@@ -57,11 +58,7 @@ def run( pos_file, neg_file, out_dir, format, mapping ):
         pairs = all_pairs( symbol_count )
 
         # Decide which subrange of all pairs this node will handle
-        interval_size = len( pairs ) / nodes
-        lo = node_id * interval_size
-        hi = lo + interval_size
-        
-        ## print "Node %d has interval [%d, %d)" % ( node_id, lo, hi ) 
+        lo, hi = pypar.balance( len( pairs ), nodes, node_id )
 
         # Find best collapsed mapping in interval
         best_i, best_j, best_merit = None, None, 0
@@ -69,7 +66,6 @@ def run( pos_file, neg_file, out_dir, format, mapping ):
             merit = calc_merit( pos_strings, neg_strings, mapping.collapse( i, j )  ) 
             if merit > best_merit:
                 best_i, best_j, best_merit = i, j, merit
-                
             
         # Aggregate results
         if node_id != 0:
@@ -127,11 +123,11 @@ def main():
 
     options, args = cookbook.doc_optparse.parse( __doc__ )
 
-    try:
-        pos_fname, neg_fname, out_dir = args
-        mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
-    except:
-        cookbook.doc_optparse.exit()
+    #try:
+    pos_fname, neg_fname, out_dir = args
+    mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
+    #except:
+    #    cookbook.doc_optparse.exit()
 
     run( open( pos_fname ), open( neg_fname ), out_dir, options.format, mapping )
 

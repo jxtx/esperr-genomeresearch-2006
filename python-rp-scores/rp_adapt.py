@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.3
+#!/usr/bin/env python
 
 """
 Collapse from a starting alphabet to a series of nested alphabets using
