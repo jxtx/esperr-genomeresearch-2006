@@ -7,7 +7,8 @@ usage: %prog pos_data neg_data [options]
    -f, --format=FILE:  Format of input data. 'ints' by default, or 'maf'
    -m, --mapping=FILE: A mapping (alphabet reduction) to apply to each sequence (optional)
    -r, --radix=N:      Radix (optional)
-   -o, --orders=N,...:   Orders to cross validate over
+   -o, --orders=N,...: Orders to cross validate over
+   -F, --fold=N:       Fold (default 5)
    -M, --model=name:   Name of model to train (default 'standard')
 """
 
@@ -23,7 +24,9 @@ import rp.io
 import rp.mapping
 import rp.models
 
-def run( pos_file, neg_file, format, mapping, radix, orders, modname ):
+default_fold = 5
+
+def run( pos_file, neg_file, format, mapping, radix, orders, modname, fold ):
 
     # Split up 
 
@@ -36,19 +39,19 @@ def run( pos_file, neg_file, format, mapping, radix, orders, modname ):
         if mapping: radix = mapping.get_out_size()
         else: radix = max( map( max, pos_strings ) + map( max, neg_strings ) ) + 1
 
-    print "Order     TP  ~TP  ~FP   FP   FN  ~FN  ~TN   TN      %    time"
+    print "Order     TP  ~TP  ~FN   FN   FP  ~FP  ~TN   TN       %    time"
 
     # Cross validate for various orders
     for order in orders:
         model_factory = lambda d0, d1: rp.models.train( modname, order, radix, d0, d1 )
-        cv_engine = rp.cv.CV( model_factory, pos_strings, neg_strings )
+        cv_engine = rp.cv.CV( model_factory, pos_strings, neg_strings, fold=fold )
         start_time = time.time()
         cv_engine.run()
         seconds = time.time() - start_time
 
         print "%5d  " % order,
         print cv_engine.cls1, cv_engine.cls2,
-        print "  %2.2f    %2.2f" % ( cv_engine.get_success_rate(), seconds )
+        print "  %2.2f    %2.2f" % ( cv_engine.get_success_rate()*100, seconds )
         
 def main():
 
@@ -63,6 +66,10 @@ def main():
         if radix: radix = int( radix )
         modname = getattr( options, 'model' )
         if modname is None: modname = 'standard'
+        if options.fold:
+            fold = int( options.fold )
+        else:
+            fold = default_fold
         if options.mapping:
             align_count, mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
         else:
@@ -70,7 +77,7 @@ def main():
     except:
         cookbook.doc_optparse.exit()
 
-    run( open( pos_fname ), open( neg_fname ), options.format, mapping, radix, orders, modname )
+    run( open( pos_fname ), open( neg_fname ), options.format, mapping, radix, orders, modname, fold )
 
 
 if __name__ == "__main__": main()
