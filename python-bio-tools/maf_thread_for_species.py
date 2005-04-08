@@ -6,6 +6,7 @@ the passed in species, after dropping any other species and removing  columns
 containing only gaps.
 
 usage: %prog species1 species2 ... < maf 
+    -n, --nofuse: Don't attempt to join blocks, just remove rows.
 """
 
 import psyco_full
@@ -16,17 +17,25 @@ import sys
 
 from itertools import *
 
+from cookbook import doc_optparse
+
 def main():
-   
-    species = sys.argv[1:]   
-    if len( species ) == 1 and ',' in species[0]:
-        species = species[0].split( ',' )
-   
+
+    options, args = doc_optparse.parse( __doc__ )
+
+    try:
+        species = args
+        # Allow a comma separated list, TODO: allow a newick format tree
+        if len( species ) == 1 and ',' in species[0]: species = species[0].split( ',' )
+        fuse = not( bool( options.nofuse ) ) 
+    except:
+        doc_optparse.exit()
+
     maf_reader = align.maf.Reader( sys.stdin )
-    maf_writer = MafFuser( align.maf.Writer( sys.stdout ) )
+    maf_writer = align.maf.Writer( sys.stdout )
+
+    if fuse: maf_writer = MafFuser( maf_writer )
    
-    last = None
- 
     for m in maf_reader:            
         new_components = get_components_for_species( m, species )	
         if new_components: 

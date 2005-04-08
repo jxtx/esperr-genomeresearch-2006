@@ -3,6 +3,7 @@ find_in_sorted_file.py
 int_seqs_to_char_strings.py
 interval_count_intersections.py
 line_select.py
+maf_build_index.py
 maf_chop.py
 maf_chunk.py
 maf_count.py

@@ -24,7 +24,8 @@ def __main__():
         else: l = m.components
         for c in l:
             print ">%s:%d-%d" % ( c.src, c.start, c.end )
-            print_n( c.text, 50 )
+            print c.text
+            #print_n( c.text, 50 )
 
 def print_n( s, n, f = sys.stdout ):
     p = 0
