@@ -4,7 +4,7 @@ import sys, struct, string, math
 
 NIB_MAGIC_NUMBER = 0x6BE93D3A
 NIB_MAGIC_NUMBER_SWAP = 0x3A3DE96B
-NIB_HEADER_SIZE = 4
+NIB_MAGIC_SIZE = 4
 NIB_LENGTH_SIZE = 4
 NIB_I2C_TABLE = "TCAGNXXXtcagnxxx"
 
@@ -13,7 +13,7 @@ READ_CHUNK_SIZE=1024*1024
 class NibFile( object ):
     def __init__( self, file ):
         self.byte_order = ">" 
-        magic = struct.unpack( ">L", file.read( NIB_HEADER_SIZE ) )[0]
+        magic = struct.unpack( ">L", file.read( NIB_MAGIC_SIZE ) )[0]
         if magic != NIB_MAGIC_NUMBER: 
             if magic == NIB_MAGIC_NUMBER_SWAP: self.byte_order = "<"  
             else: raise "Not a NIB file"
@@ -27,7 +27,7 @@ class NibFile( object ):
         block_start = int( math.floor( start / 2 ) )
         block_end = int( math.floor( ( start + length - 1 ) / 2 ) )
         block_len = block_end + 1 - block_start
-        self.file.seek( NIB_HEADER_SIZE + block_start )
+        self.file.seek( NIB_MAGIC_SIZE + NIB_LENGTH_SIZE + block_start )
         result = []
         raw = self.file.read( block_len )
         data = struct.unpack( "%s%dB" % ( self.byte_order, block_len ), raw )
