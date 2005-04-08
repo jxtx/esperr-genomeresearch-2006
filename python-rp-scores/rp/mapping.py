@@ -2,7 +2,7 @@ from mapping_helper import *
 
 # Char->Int mapping for DNA characters
                 
-DNA_BASE=5
+DNA_BASE=6
                 
 DNA = CharToIntArrayMapping()
 DNA.set_mapping( "a", 0 )
@@ -13,9 +13,8 @@ DNA.set_mapping( "g", 2 )
 DNA.set_mapping( "G", 2 )
 DNA.set_mapping( "t", 3 )
 DNA.set_mapping( "T", 3 )
-DNA.set_mapping( "N", 4 )
-DNA.set_mapping( "n", 4 )
 DNA.set_mapping( "-", 4 )
+DNA.set_mapping( "?", 5 )
 
 # Creating mappings
 

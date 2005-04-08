@@ -25,8 +25,8 @@ import rp.models.averaging as model
 import rp.mapping
 
 stop_size = 5
-fold = 5 
-passes = 5 
+fold = 10
+passes = 10
 
 def run( pos_file, neg_file, out_dir, format, align_count, mapping ):
 
@@ -51,8 +51,9 @@ def run( pos_file, neg_file, out_dir, format, align_count, mapping ):
 
         count = 0
 
-        for i in range( 0, symbol_count ):
-            for j in range( i + 1, symbol_count ):
+        pairs = all_pairs( symbol_count )
+
+        for i, j in pairs:
 
                 collapsed = mapping.collapse( i, j )
                 
@@ -78,6 +79,13 @@ def run( pos_file, neg_file, out_dir, format, align_count, mapping ):
         for i, symbol in enumerate( mapping.get_table() ): 
             print >>mapping_out, str.join( '', rp.mapping.DNA.reverse_map( i, align_count ) ), symbol
         mapping_out.close()
+
+def all_pairs( n ):
+    rval = []
+    for i in range( 0, n ):
+        for j in range( i + 1, n ):
+            rval.append( ( i, j ) )
+    return rval
 
 def calc_merit( pos_strings, neg_strings, mapping ):
     # Apply mapping to strings

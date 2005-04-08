@@ -125,8 +125,11 @@ cdef to_probs( int radix, Node* node, Node* parent, float discount ):
         # Spread discount among nodes
         # print "spreading", discount
         for i from 0 <= i < radix:
-            node.vals[i] = ( (1-discount) * (node.vals[i]/total) ) \
-                           + ( (discount) * parent.vals[i] )       
+            if parent == NULL:
+                node.vals[i] = ( (1-discount) * (node.vals[i]/total) ) + ( discount / radix )
+            else:
+                node.vals[i] = ( (1-discount) * (node.vals[i]/total) ) \
+                               + ( (discount) * parent.vals[i] )       
     # Recursively visit children        
     for i from 0 <= i < radix:
         if node.children[i] != NULL:
@@ -159,20 +162,32 @@ cdef Node* to_scores( int radix, Node* probs1, Node* probs2 ):
     for i from 0 <= i < radix:
         if probs1.children[i] == NULL and probs2.children[i] == NULL:
             continue
+# ------ In this case, if we observe the node in _either_ set we extend
+#        elif probs1.children[i] == NULL:
+#            probs1.children[i] = new_node( radix )
+#            if probs1.children[i] == NULL:
+#                free_node( rval, radix )
+#                return NULL
+#            for j from 0 <= j < radix:
+#                probs1.children[i].vals[j] = probs1.vals[j]
+#        elif probs2.children[i] == NULL:
+#            probs2.children[i] = new_node( radix )
+#            if probs2.children[i] == NULL:
+#                free_node( rval, radix )
+#                return NULL
+#            for j from 0 <= j < radix:
+#                probs2.children[i].vals[j] = probs2.vals[j]
+# ------- Alternate strategy, require it to be observed in both sets to extend -- if this works, integrate it into probs to make faster
         elif probs1.children[i] == NULL:
-            probs1.children[i] = new_node( radix )
-            if probs1.children[i] == NULL:
-                free_node( rval, radix )
-                return NULL
-            for j from 0 <= j < radix:
-                probs1.children[i].vals[j] = probs1.vals[j]
+            free_node( probs2.children[i], radix )
+            probs2.children[i] = NULL
+            continue
         elif probs2.children[i] == NULL:
-            probs2.children[i] = new_node( radix )
-            if probs2.children[i] == NULL:
-                free_node( rval, radix )
-                return NULL
-            for j from 0 <= j < radix:
-                probs2.children[i].vals[j] = probs2.vals[j]
+            free_node( probs1.children[i], radix )
+            probs1.children[i] = NULL
+            continue
+# ------- End alternate
+
         rval.children[i] = to_scores( radix, probs1.children[i], probs2.children[i] )
     return rval
 
@@ -262,6 +277,7 @@ def train( int order, int radix, pos_strings, neg_strings, **kwargs ):
     cdef int buf_len
     cdef int i
     cdef int D, N
+
     
     # Convert keyword parameters
     try: d = float( kwargs['D'] )
@@ -296,7 +312,6 @@ def train( int order, int radix, pos_strings, neg_strings, **kwargs ):
         prune( 0, i, radix, neg_node, N )
     #to_file( order, radix, pos_node, "pos_node.debug" )
     #to_file( order, radix, neg_node, "neg_node.debug" )
-        
     to_probs( radix, pos_node, NULL, d )
     to_probs( radix, neg_node, NULL, d )
 

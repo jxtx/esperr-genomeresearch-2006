@@ -6,8 +6,6 @@ Score a set of sequences using a model
 usage: %prog data score_matrix out [options]
    -f, --format=FILE:  Format of input data. 'ints' by default, or 'maf'
    -m, --mapping=FILE: A mapping (alphabet reduction) to apply to each sequence (optional)
-   -w, --window=N:     Size of window to scroll over sequence
-   -s, --shift:        Amount to shift window
    -M, --model=name:   Name of model to train (default 'standard')
 """
 

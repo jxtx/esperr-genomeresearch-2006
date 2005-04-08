@@ -9,6 +9,7 @@ cdef extern from "Python.h":
 
 from Numeric import zeros
 from math import floor
+import random
 import sys
 
 cdef class CharToIntArrayMapping:
@@ -130,13 +131,84 @@ cdef class IntToIntMapping:
         cdef IntToIntMapping copy
         copy = IntToIntMapping( self.in_size )
         copy.out_size = self.out_size - 1
+        if a > b: a, b = b, a
         for i from 0 <= i < self.in_size:
             if self.table[i] == b: copy.table[i] = a
             elif self.table[i] == copy.out_size: copy.table[i] = b
             else: copy.table[i] = self.table[i]
         return copy
 
-    def get_out_size( self ): return self.out_size
+    def expand( self, int x ):
+        """Grow the alphabet by making 'a' a seperate symbol. If it already mapped to a single symbol, do nothing"""
+        cdef int i, count, a, b
+        cdef IntToIntMapping copy
+        # Get the symbol x maps to
+        a = self.table[x]
+        # Symbols that map to -1 should not be touched
+        if a < 0: return self
+        # Count how many other input symbols map to a
+        count = 0
+        for i from 0 <= i < self.in_size:
+            if self.table[i] == a: count = count + 1
+        # Already a singleton
+        if count < 2: return self
+        # Otherwise, make a copy with the separated symbol
+        copy = IntToIntMapping( self.in_size )
+        copy.out_size = self.out_size + 1
+        for i from 0 <= i < self.in_size:
+            copy.table[i] = self.table[i]
+        copy.table[x] = self.out_size
+        return copy
+
+    def expand_out( self, int a ):
+        """Grow the alphabet breaking 'a' into two symbols randomly"""
+        cdef int i, count, to_split, b
+        cdef IntToIntMapping copy
+        count = 0
+        for i from 0 <= i < self.in_size:
+            if self.table[i] == a: count = count + 1
+        if count < 2: return self
+        copy = IntToIntMapping( self.in_size )
+        copy.out_size = self.out_size + 1
+        b = self.out_size
+        to_split = random.randrange( count )
+        count = 0
+        for i from 0 <= i < self.in_size:
+            if self.table[i] == a: 
+                if count == to_split: copy.table[i] = b
+                else: copy.table[i] = a
+                count = count + 1
+            else:
+                copy.table[i] = self.table[i]
+        return copy
+
+    def expand_random_split( self, int a ):
+        """Grow the alphabet breaking 'a' into two symbols randomly"""
+        cdef int i, count, b
+        cdef IntToIntMapping copy
+        count = 0
+        for i from 0 <= i < self.in_size:
+            if self.table[i] == a: count = count + 1
+        if count < 2: return self
+        copy = IntToIntMapping( self.in_size )
+        copy.out_size = self.out_size + 1
+        b = self.out_size
+        to_split = random.sample( range( count ), count/2 )
+        count = 0
+        for i from 0 <= i < self.in_size:
+            if self.table[i] == a: 
+                if count in to_split: copy.table[i] = b
+                else: copy.table[i] = a
+                count = count + 1
+            else:
+                copy.table[i] = self.table[i]
+        return copy
+
+    def get_in_size( self ): 
+        return self.in_size
+
+    def get_out_size( self ): 
+        return self.out_size
     
     def get_table( self ):
         rval = zeros( self.in_size, 'i' )
