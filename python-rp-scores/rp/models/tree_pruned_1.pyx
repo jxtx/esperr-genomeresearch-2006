@@ -384,7 +384,7 @@ cdef Node* parse_node( element, int radix ):
         rval.vals[i] = vals[i]
     # Parse children
     for child in element.find( "children" ):
-        index = int( children[i].symbol )
+        index = int( child.get( 'symbol' ) )
         assert index < radix
-        rval.children[ index ] = parse_node( children[i], radix )
+        rval.children[ index ] = parse_node( child, radix )
     return rval
