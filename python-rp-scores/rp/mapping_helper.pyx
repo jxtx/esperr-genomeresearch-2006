@@ -126,6 +126,9 @@ cdef class IntToIntMapping:
         # Done
         return rval
 
+    def __getitem__( self, int x ):
+        return self.table[ x ]
+
     def collapse( self, int a, int b ):
         cdef int i
         cdef IntToIntMapping copy
