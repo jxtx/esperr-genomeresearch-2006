@@ -67,7 +67,7 @@ def run( pos_file, neg_file, out_dir, format, align_count, initial_mapping ):
 
     # Collapse
     while 1:
-    
+
         symbol_count = mapping.get_out_size()
 
         best_merit = 0
@@ -106,9 +106,9 @@ def run( pos_file, neg_file, out_dir, format, align_count, initial_mapping ):
             print >>merit_out, symbol_count, best_merit
             # Write best mapping to a file
             mapping_out = open( os.path.join( out_dir, "%03d.mapping" % out_counter ), 'w' )
-            for i, initial_symbol in enumerate( initial_mapping.get_table() ): 
+            for i, symbol in enumerate( initial_mapping.get_table() ): 
                 # Apply the 'second' mapping to the atom symbol
-                symbol = mapping[ initial_symbol ]
+                if symbol >= 0: symbol = mapping[ symbol ]
                 print >>mapping_out, str.join( '', rp.mapping.DNA.reverse_map( i, align_count ) ), symbol
             mapping_out.close()
             out_counter += 1
@@ -117,7 +117,7 @@ def run( pos_file, neg_file, out_dir, format, align_count, initial_mapping ):
             % ( step_counter, best_merit * 100, mapping.get_out_size(), best_merit_overall * 100, best_merit_overall_index  )
 
         # If we have gone 100 steps without improving over the best, restart from best
-        if step_counter > best_merit_overall_index + 200:
+        if step_counter > best_merit_overall_index + 50:
             print >>sys.stderr, "Restarting from best mapping"
             mapping = best_mapping_overall
             best_merit_overall_index = step_counter

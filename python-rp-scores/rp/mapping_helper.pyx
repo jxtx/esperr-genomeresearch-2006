@@ -127,6 +127,7 @@ cdef class IntToIntMapping:
         return rval
 
     def __getitem__( self, int x ):
+        assert 0 <= x < self.in_size
         return self.table[ x ]
 
     def collapse( self, int a, int b ):

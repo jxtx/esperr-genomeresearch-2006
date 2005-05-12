@@ -2,7 +2,8 @@ from mapping_helper import *
 
 # Char->Int mapping for DNA characters
                 
-DNA_BASE=6
+#DNA_BASE=6
+DNA_BASE=5
                 
 DNA = CharToIntArrayMapping()
 DNA.set_mapping( "a", 0 )
@@ -14,7 +15,7 @@ DNA.set_mapping( "G", 2 )
 DNA.set_mapping( "t", 3 )
 DNA.set_mapping( "T", 3 )
 DNA.set_mapping( "-", 4 )
-DNA.set_mapping( "?", 5 )
+#DNA.set_mapping( "?", 5 )
 
 # Creating mappings
 
@@ -39,7 +40,7 @@ def alignment_mapping_from_file( f ):
 
 def identity_mapping( size ):
     mapping = IntToIntMapping( size )
-    for i in range( size-1 ):
+    for i in range( size ):
         mapping.set_mapping( i, i )
     return mapping    
     
