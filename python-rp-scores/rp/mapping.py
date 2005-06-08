@@ -38,6 +38,25 @@ def alignment_mapping_from_file( f ):
 
     return align_count, mapping
 
+def second_mapping_from_file( f, first_mapping ):
+        
+    columns, symbols = [], []
+    for line in f:
+        column, symbol = line.split()
+        columns.append( column )
+        symbols.append( int( symbol ) )
+                
+    align_count = len( columns[0] )
+        
+    mapping = IntToIntMapping( first_mapping.get_out_size() )
+        
+    for column, symbol in zip( columns, symbols ):
+        index = DNA.translate_list( list( column ) )[0]
+        mapping.set_mapping( first_mapping[index], symbol )
+
+    return mapping
+
+
 def identity_mapping( size ):
     mapping = IntToIntMapping( size )
     for i in range( size ):

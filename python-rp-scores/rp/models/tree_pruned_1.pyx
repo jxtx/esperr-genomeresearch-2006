@@ -310,8 +310,9 @@ def train( int order, int radix, pos_strings, neg_strings, **kwargs ):
         prune( 0, i, radix, pos_node, N )
         #to_file( order, radix, pos_node, str( i ) + ".after.pos_node.debug" )
         prune( 0, i, radix, neg_node, N )
-    #to_file( order, radix, pos_node, "pos_node.debug" )
-    #to_file( order, radix, neg_node, "neg_node.debug" )
+    if 'dump' in kwargs:
+        to_file( order, radix, pos_node, "pos_node.debug" )
+        to_file( order, radix, neg_node, "neg_node.debug" )
     to_probs( radix, pos_node, NULL, d )
     to_probs( radix, neg_node, NULL, d )
 

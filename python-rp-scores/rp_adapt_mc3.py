@@ -6,6 +6,7 @@ cross validation as 'merit'.
 
 usage: %prog pos_data neg_data out_dir [options]
    -f, --format=NAME:  Format of input data. 'ints' by default, or 'maf'
+   -a, --atoms=FILE:   A mapping specifying the largest set of symbols (these never get broken)
    -m, --mapping=FILE: A mapping (alphabet reduction) to apply to each sequence
 """
 
@@ -18,6 +19,8 @@ import random
 import sys
 import traceback
 
+from Numeric import *
+
 from cookbook.progress_bar import *
 from rp import cv, io
 from itertools import *
@@ -29,14 +32,18 @@ import rp.models.tree_pruned_1 as model
 
 import rp.mapping
 
+model_N=10
+model_D=0.01
+model_order=3
+
 stop_size = 5
-fold = 5 
-passes = 5 
+fold = 5
+passes = 5
 
 samp_size_collapse = 30
 samp_size_expand = 10
 
-def run( pos_file, neg_file, out_dir, format, align_count, initial_mapping ):
+def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping ):
 
     # Open merit output
     merit_out = open( os.path.join( out_dir, 'merits.txt' ), 'w' )
@@ -46,15 +53,21 @@ def run( pos_file, neg_file, out_dir, format, align_count, initial_mapping ):
     neg_strings = list( io.get_reader( neg_file, format, None ) )
 
     # Apply initial mapping immediately, to get the 'atoms' we will then collapse
-    pos_strings = [ initial_mapping.translate( s ) for s in pos_strings ]
-    neg_strings = [ initial_mapping.translate( s ) for s in neg_strings ]
+    pos_strings = [ atom_mapping.translate( s ) for s in pos_strings ]
+    neg_strings = [ atom_mapping.translate( s ) for s in neg_strings ]
+
+    # Count how many times each atom appears in the training data
+    atom_counts = zeros( atom_mapping.get_out_size() )
+    for string in chain( pos_strings, neg_strings ):
+        for val in string:
+            atom_counts[ val ] += 1
+
+    # Valid candiates for expansion must occur more than 5 times in the training data
+    can_expand = compress( atom_counts > model_N, arange( len( atom_counts ) ) )
 
     # Handling bad columns in the training data is not obvious, so don't do it for now
     for string in chain( pos_strings, neg_strings ):
         assert -1 not in string, "Cannot have invalid columns (map to -1) in training data"
-
-    # And create the mapping we will collapse 
-    mapping = rp.mapping.identity_mapping( initial_mapping.get_out_size() )
 
     best_merit_overall = 0
     best_mapping_overall = None
@@ -85,8 +98,7 @@ def run( pos_file, neg_file, out_dir, format, align_count, initial_mapping ):
                     best_mapping = new_mapping
 
         # Also try expansions (some of them)
-        elements = range( mapping.get_out_size() )
-        if len( elements ) > samp_size_expand: elements = random.sample( elements, samp_size_expand )
+        elements = random.sample( can_expand, samp_size_expand )
         for i in elements:
             new_mapping = mapping.expand( i )
             if new_mapping.get_out_size() == symbol_count: continue
@@ -106,7 +118,7 @@ def run( pos_file, neg_file, out_dir, format, align_count, initial_mapping ):
             print >>merit_out, symbol_count, best_merit
             # Write best mapping to a file
             mapping_out = open( os.path.join( out_dir, "%03d.mapping" % out_counter ), 'w' )
-            for i, symbol in enumerate( initial_mapping.get_table() ): 
+            for i, symbol in enumerate( atom_mapping.get_table() ): 
                 # Apply the 'second' mapping to the atom symbol
                 if symbol >= 0: symbol = mapping[ symbol ]
                 print >>mapping_out, str.join( '', rp.mapping.DNA.reverse_map( i, align_count ) ), symbol
@@ -116,21 +128,24 @@ def run( pos_file, neg_file, out_dir, format, align_count, initial_mapping ):
         print >>sys.stderr, "%06d, New best merit: %2.2f%%, size: %d, overall best: %2.2f%% at %06d" \
             % ( step_counter, best_merit * 100, mapping.get_out_size(), best_merit_overall * 100, best_merit_overall_index  )
 
-        # If we have gone 100 steps without improving over the best, restart from best
+        # If we have gone 50 steps without improving over the best, restart from best
         if step_counter > best_merit_overall_index + 50:
             print >>sys.stderr, "Restarting from best mapping"
             mapping = best_mapping_overall
             best_merit_overall_index = step_counter
-            last_force_counter = step_counter
+            # last_force_counter = step_counter
+            # Force expansions after restart
+            last_force_counter = 0
 
-        if step_counter > last_force_counter + 20:
+        #if step_counter == 0 or step_counter > last_force_counter + 10:
+        if step_counter > last_force_counter + 10:
             last_force_counter = step_counter
             print >>sys.stderr, "Forcing expansions"
             for i in range( 5 ):
                 symbol_count = mapping.get_out_size()
                 best_merit = 0
                 best_mapping = None
-                for i in random.sample( range( mapping.get_in_size() ), samp_size_expand ):
+                for i in random.sample( can_expand, samp_size_expand ):
                     new_mapping = mapping.expand( i )
                     if new_mapping.get_out_size() == symbol_count: continue
                     merit = calc_merit( pos_strings, neg_strings, new_mapping )
@@ -153,23 +168,11 @@ def calc_merit( pos_strings, neg_strings, mapping ):
     neg_strings = [ mapping.translate( s ) for s in neg_strings ]
     # Cross validate using those strings
     radix = mapping.get_out_size()
-    #order = max_order( radix )
-    order = 2
-    model_factory = lambda d0, d1: model.train( order, radix, d0, d1, D=0.01, N=5 )
+    model_factory = lambda d0, d1: model.train( model_order, radix, d0, d1, D=model_D, N=model_N )
     cv_engine = cv.CV( model_factory, pos_strings, neg_strings, fold=fold, passes=passes )
     cv_engine.run()
     # Merit is TP + TN
     return ( cv_engine.cls1.pos / ( len( pos_strings ) * passes ) + cv_engine.cls2.neg / ( len( neg_strings ) * passes ) ) / 2
-
-def max_order( radix ):
-    """Determine max order based on size of alphabet"""
-    if radix <= 4: return 4
-    elif radix <= 7: return 3
-    elif radix <= 14: return 2
-    else: return 1
-
-def not_max_order( radix ):
-    return 3
 
 def main():
 
@@ -177,13 +180,17 @@ def main():
 
     options, args = cookbook.doc_optparse.parse( __doc__ )
 
-    try:
+    if 1:
         pos_fname, neg_fname, out_dir = args
-        align_count, mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
-    except:
-        cookbook.doc_optparse.exit()
+        align_count, atom_mapping = rp.mapping.alignment_mapping_from_file( file( options.atoms ) )
+        if options.mapping:
+            mapping = rp.mapping.second_mapping_from_file( file( options.mapping ), atom_mapping )
+        else:
+            mapping = rp.mapping.identity_mapping( atom_mapping.get_out_size() )
+    #except:
+    #    cookbook.doc_optparse.exit()
 
-    run( open( pos_fname ), open( neg_fname ), out_dir, options.format, align_count, mapping )
+    run( open( pos_fname ), open( neg_fname ), out_dir, options.format, align_count, atom_mapping, mapping )
 
 
 if __name__ == "__main__": main()

@@ -1,5 +1,6 @@
 def get( name ):
     try:
+        if ":" in name: name = name.split( ":" )[0]
         return getattr( __import__( "rp.models", globals(), locals(), [ name ] ), name )
     except:
         raise "Unknown model: '%s'" % name
