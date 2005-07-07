@@ -4,6 +4,7 @@ inplace: setup
 	cp target/rp/models/standard.so rp/models
 	cp target/rp/models/tree.so rp/models
 	cp target/rp/models/tree_pruned_1.so rp/models
+	cp target/rp/models/tree_pruned.so rp/models
 	#cp target/rp/models/gill_pst.so rp/models
 	cp target/rp/mapping_helper.so rp
 
@@ -16,3 +17,4 @@ test: inplace
 
 clean:
 	python setup.py clean
+	rm -rf build

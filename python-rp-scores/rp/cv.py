@@ -25,18 +25,23 @@ class CVClassification( object ):
 
 class CV( object ):
 
-    def __init__( self, model_class, data1, data2, fold=5, passes=5 ):
+    def __init__( self, model_class, data1, data2, fold=5, passes=5, loo=False ):
         self.model_class = model_class
         self.data1 = data1
         self.data2 = data2
         self.fold = fold
         self.passes = passes
+        self.loo = loo
 
     def get_success_rate( self ):
         return ( float( self.cls1.unc_pos + self.cls1.pos + self.cls2.unc_neg + self.cls2.neg ) /
                  float( self.cls1.get_total() + self.cls2.get_total() ) )
 
     def run( self ):
+        if self.loo: self.run_loo()
+        else: self.run_folds()
+
+    def run_folds( self ):
         # Initialize classifications
         self.cls1 = CVClassification()
         self.cls2 = CVClassification()
@@ -53,6 +58,25 @@ class CV( object ):
                 train2, test2 = self.split_by_partition( self.data2, partition2, f )
                 self.run_fold( train1, train2, test1, test2 )
 
+    def run_loo( self ):
+        # Initialize classifications
+        self.cls1 = CVClassification()
+        self.cls2 = CVClassification()
+        # Run everything 'passes' times
+        for p in range( self.passes ):
+            # Run for each item in positive set
+            for i in range( len( self.data1 ) ):
+                test = [ self.data1[i] ]
+                train = list( self.data1 )
+                del train[i]
+                self.run_fold( train, self.data2, test, [] )
+            # And each item in negative set
+            for i in range( len( self.data2 ) ):
+                test = [ self.data2[i] ]
+                train = list( self.data2 )
+                del train[i]
+                self.run_fold( self.data1, train, [], test )
+
     def run_fold( self, train_set_1, train_set_2, test_set_1, test_set_2 ):
         """Run one fold of the cross validation"""
         # Build predictor from training sets
@@ -62,8 +86,8 @@ class CV( object ):
         train_set_scores_2 = [ predictor.score( x ) for x in train_set_2 ]
         test_set_scores_1 = [ predictor.score( x ) for x in test_set_1 ]
         test_set_scores_2 = [ predictor.score( x ) for x in test_set_2 ]
-	# Free model
-	del predictor
+        # Free model
+        del predictor
         # Determine threshold
         low, mid, high = self.determine_threshold_simple( train_set_scores_1, train_set_scores_2 )
         # Classify
