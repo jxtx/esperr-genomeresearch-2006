@@ -11,7 +11,7 @@ usage: %prog species1 species2 ... < maf
 
 import psyco_full
 
-import align.maf
+from bx import align.maf
 import copy
 import sys
 

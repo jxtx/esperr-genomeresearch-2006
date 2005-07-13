@@ -7,7 +7,7 @@ Read a MAF from standard input and print the fraction of gap columns in each blo
 from __future__ import division
 
 import sys
-import align.maf
+from bx import align.maf
 
 
 def main():    

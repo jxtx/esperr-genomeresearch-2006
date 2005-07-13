@@ -8,7 +8,7 @@ in each block.
 from __future__ import division
 
 import sys
-import align.maf
+from bx import align.maf
 
 def main():
     

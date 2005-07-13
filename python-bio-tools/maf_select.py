@@ -10,7 +10,7 @@ usage: %prog feature_file < maf_file
 import psyco_full
 
 import sys
-import align.maf
+from bx import align.maf
 
 def __main__():
 

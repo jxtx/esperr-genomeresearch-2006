@@ -9,11 +9,11 @@ from __future__ import division
 
 import psyco_full
 
-import align.maf
-import intervals
+from bx import align.maf
+from bx import intervals
+from bx import misc
 import string
 import sys
-import misc
 
 def main():
 

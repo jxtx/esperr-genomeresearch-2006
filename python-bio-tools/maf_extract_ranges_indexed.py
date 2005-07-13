@@ -22,8 +22,8 @@ import psyco_full
 
 import cookbook.doc_optparse
 
-import align.maf
-import misc
+from bx import align.maf
+from bx import misc
 import os
 import sys
 

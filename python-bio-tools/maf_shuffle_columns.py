@@ -4,14 +4,13 @@ import psyco_full
 
 import sys
 
-import ranges, sys
-import align
-from align import maf
+import sys
+from bx import align
 
 def __main__():
 
-    maf_reader = maf.Reader( sys.stdin )
-    maf_writer = maf.Writer( sys.stdout )
+    maf_reader = align.maf.Reader( sys.stdin )
+    maf_writer = align.maf.Writer( sys.stdout )
 
     for m in maf_reader:
     

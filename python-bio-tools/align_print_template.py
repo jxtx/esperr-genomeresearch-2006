@@ -13,7 +13,7 @@ import psyco_full
 
 import sys
 import cookbook.doc_optparse
-import align
+from bx import align
 
 from Cheetah.Template import Template
 

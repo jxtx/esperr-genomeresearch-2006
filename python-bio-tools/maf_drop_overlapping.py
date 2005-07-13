@@ -10,9 +10,8 @@ import psyco_full
 
 import cookbook.doc_optparse
 
-import align.maf
-import intervals
-import ranges
+from bx import align.maf
+from bx import intervals
 import sys
 
 

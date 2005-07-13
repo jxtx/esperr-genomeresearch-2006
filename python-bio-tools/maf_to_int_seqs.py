@@ -16,9 +16,9 @@ import psyco_full
 
 from numarray import *
 
-import align.maf
-import alphabet
-import seq_numarray
+from bx import align.maf
+from bx import alphabet
+from bx import seq_numarray
 import string
 import sys
 
