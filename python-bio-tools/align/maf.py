@@ -5,6 +5,15 @@ import interval_index_file
 
 # Tools for dealing with multiple alignments in MAF format
 
+class MultiIndexed( object ):
+    """Similar to 'indexed' but wraps more than one maf_file"""
+    def __init__( self, maf_filenames, keep_open=False ):
+        self.indexes = [ Indexed( maf_file, maf_file + ".index" ) for maf_file in maf_filenames ]
+    def get( self, src, start, end ):
+        blocks = []
+        for index in self.indexes: blocks += index.get( src, start, end )
+        return blocks
+    
 class Indexed( object ):
     """Indexed access to a maf using overlap queries, requires an index file"""
 

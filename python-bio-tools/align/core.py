@@ -1,5 +1,11 @@
 import random
 
+# DNA reverse complement table
+DNA_COMP = "                                             -                  " \
+           " TVGH  CD  M KN   YSA BWXR       tvgh  cd  m kn   ysa bwxr      " \
+           "                                                                " \
+           "                                                                "
+
 class Alignment( object ):
 
     def __init__( self, score=0, attributes={} ):
@@ -29,13 +35,25 @@ class Alignment( object ):
             if c.src == src: return c
         return None
 
+    def get_component_by_src_start( self, src ):
+        for c in self.components:
+            if c.src.startswith( src ): return c
+        return None    
+
     def slice( self, start, end ):
         new = Alignment( score=self.score, attributes=self.attributes )
         for component in self.components:
             new.components.append( component.slice( start, end ) )
         new.text_size = end - start
         return new
-
+    
+    def reverse_complement( self ):
+        new = Alignment( score=self.score, attributes=self.attributes )
+        for component in self.components:
+            new.components.append( component.reverse_complement() )
+        new.text_size = self.text_size
+        return new
+    
     def slice_by_component( self, component_index, start, end ):
         if type( component_index ) == type( 0 ):
             ref = self.components[ component_index ]
@@ -52,6 +70,35 @@ class Alignment( object ):
     def column_iter( self ):
         for i in range( self.text_size ):
             yield [ c.text[i] for c in self.components ]
+
+    def limit_to_species( self, species ):
+        new = Alignment( score=self.score, attributes=self.attributes )
+        new.text_size = self.text_size
+        for component in self.components:
+            if component.src.split('.')[0] in species:
+                new.add_component( component )
+        return new
+
+    def remove_all_gap_columns( self ):
+        """
+        Remove any columns containing only gaps from alignment components,
+        text of components is modified IN PLACE.
+        """
+        seqs = [ list( c.text ) for c in self.components ]
+        i = 0
+        text_size = self.text_size
+        while i < text_size:
+            all_gap = True
+            for seq in seqs:
+                if seq[i] != '-': all_gap = False
+            if all_gap:
+                for seq in seqs: del seq[i]
+                text_size -= 1
+            else:
+                i += 1
+        for i in range( len( self.components ) ):
+            self.components[i].text = ''.join( seqs[i] )
+        self.text_size = text_size
     
 class Component( object ):
 
@@ -73,14 +120,21 @@ class Component( object ):
     end = property( fget=get_end )
 
     def get_forward_strand_start( self ):
-        if self.strand == '-': return self.src_size - self.end + 1
+        if self.strand == '-': return self.src_size - self.end
         else: return self.start
     forward_strand_start = property( fget=get_forward_strand_start )
         
     def get_forward_strand_end( self ):
-        if self.strand == '-': return self.src_size - self.start + 1
+        if self.strand == '-': return self.src_size - self.start
         else: return self.end
     forward_strand_end = property( fget=get_forward_strand_end)
+
+    def reverse_complement( self ):
+        start = self.src_size - self.start 
+        if self.strand == "+": strand = "-"
+        else: strand = "+"
+        text = self.text.translate( DNA_COMP )
+        return Component( self.src, start, self.size, strand, self.src_size, text )
 
     def slice( self, start, end ):
         new = Component( src=self.src, start=self.start, strand=self.strand, src_size=self.src_size )

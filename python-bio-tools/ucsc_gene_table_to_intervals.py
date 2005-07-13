@@ -23,6 +23,8 @@ def main():
                        help="Limit to region: one of coding, utr3, utr5, transcribed [default]" )
     parser.add_option( "-e", "--exons",  action="store_true", dest="exons",
                        help="Only print intervals overlapping an exon" )
+    parser.add_option( "-s", "--strand",  action="store_true", dest="strand",
+                       help="Print strand after interval" )
     options, args = parser.parse_args()
     assert options.region in ( 'coding', 'utr3', 'utr5', 'transcribed' ), "Invalid region argument"
 
@@ -58,10 +60,12 @@ def main():
             for start, end in zip( exon_starts, exon_ends ):
                 start = max( start, region_start )
                 end = min( end, region_end )
-                if start < end: 
-                    print_tab_sep( chrom, start, end )
+                if start < end:
+                    if strand: print_tab_sep( chrom, start, end, strand )
+                    else: print_tab_sep( chrom, start, end )
         else:
-            print_tab_sep( chrom, region_start, region_end )
+            if strand: print_tab_sep( chrom, region_start, region_end, strand )
+            else: print_tab_sep( chrom, region_start, region_end )
 
 def print_tab_sep( *args ):
     """Print items in `l` to stdout separated by tabs"""
