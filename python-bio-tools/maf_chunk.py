@@ -7,7 +7,8 @@ no more than a certain number of columns
 
 usage = "usage: %prog chunk_size out_dir"
 
-import sys, align.maf
+import sys
+from bx import align.maf
 from optparse import OptionParser
 import psyco_full
 import random

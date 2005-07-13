@@ -12,10 +12,10 @@ import psyco_full
 
 import cookbook.doc_optparse
 
-import interval_index_file
+from bx import interval_index_file
 import sys
 
-from align import maf
+from bx import align.maf
 
 def main():
 
@@ -30,7 +30,7 @@ def main():
     except:
         cookbook.doc_optparse.exit()
 
-    maf_reader = maf.Reader( open( maf_file ) )
+    maf_reader = align.maf.Reader( open( maf_file ) )
 
     indexes = interval_index_file.Indexes()
 

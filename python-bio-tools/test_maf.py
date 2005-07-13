@@ -1,4 +1,6 @@
-import unittest, align, align.maf as maf
+import unittest
+from bx import align
+from bx import align.maf as maf
 
 from StringIO import StringIO
 

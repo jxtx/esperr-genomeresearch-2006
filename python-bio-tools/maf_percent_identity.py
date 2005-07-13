@@ -13,7 +13,7 @@ import sys
 
 import psyco_full
 
-from align import maf
+from bx.align import maf
 
 
 def __main__():

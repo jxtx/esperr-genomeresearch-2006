@@ -7,8 +7,8 @@ non overlapping chunks of exactly the specified chop length will be produced
 
 import sys
 
-import ranges, sys, random
-from align import maf
+import sys, random
+from bx import align.maf
 from optparse import OptionParser
 
 def main():
@@ -21,8 +21,8 @@ def main():
     ( options, args ) = parser.parse_args()
 
     length = options.length
-    maf_reader = maf.Reader( sys.stdin )
-    maf_writer = maf.Writer( sys.stdout )
+    maf_reader = align.maf.Reader( sys.stdin )
+    maf_writer = align.maf.Writer( sys.stdout )
 
     for m in maf_reader:
         for chopped in chop( m, length ):

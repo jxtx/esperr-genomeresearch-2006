@@ -1,5 +1,6 @@
 from numarray import *
-import seq_numarray, unittest
+import unittest
+from bx import seq_numarray
 
 class TestCase( unittest.TestCase ):
     def testBasic( self ):

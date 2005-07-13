@@ -7,7 +7,7 @@ from numarray.ieeespecial import *
 
 from tables import *
 
-from misc import *
+from bx.misc import *
 
 from cookbook.progress_bar import ProgressBar
 

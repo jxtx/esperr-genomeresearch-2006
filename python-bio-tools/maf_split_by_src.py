@@ -7,14 +7,11 @@ no more than a certain number of columns
 
 usage = "usage: %prog"
 
-import sys, string, align.maf
+import sys, string
+from bx import align.maf
 from optparse import OptionParser
 
-try:
-    import psyco
-    psyco.profile()
-except:
-    pass
+import psyco_full
 
 INF="inf"
 

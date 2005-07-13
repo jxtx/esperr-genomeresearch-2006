@@ -11,7 +11,7 @@ import psyco_full
 
 import cookbook.doc_optparse
 
-import intervals
+from bx import intervals
 import pickle
 import sys
 

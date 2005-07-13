@@ -11,7 +11,7 @@ from __future__ import division
 import cookbook.doc_optparse
 import sys
 
-from align import maf
+from bx.align import maf
 
 
 def __main__():

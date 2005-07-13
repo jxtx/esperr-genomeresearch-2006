@@ -8,7 +8,7 @@ usage: %prog range_file nib_file
 """
 
 import cookbook.doc_optparse
-import seq.nib
+from bx import seq.nib
 import string
 import sys
 

@@ -7,7 +7,7 @@ have been passed.
 
 import sys
 
-from align import maf
+from bx.align import maf
 from optparse import OptionParser
 
 def __main__():

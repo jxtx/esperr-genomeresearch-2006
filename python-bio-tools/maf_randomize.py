@@ -3,7 +3,7 @@
 import sys
 
 import ranges, sys, random
-from align import maf
+from bx.align import maf
 from math import *
 from optparse import OptionParser
 

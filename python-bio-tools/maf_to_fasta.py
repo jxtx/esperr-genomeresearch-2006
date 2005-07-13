@@ -8,7 +8,7 @@ from __future__ import division
 
 import textwrap
 import sys
-from align import maf
+from bx.align import maf
 
 def __main__():
 

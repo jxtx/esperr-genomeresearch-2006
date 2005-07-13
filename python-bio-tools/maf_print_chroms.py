@@ -10,7 +10,7 @@ from __future__ import division
 
 import sys
 import cookbook.doc_optparse
-from align import maf
+from bx.align import maf
 from optparse import OptionParser
 
 def __main__():

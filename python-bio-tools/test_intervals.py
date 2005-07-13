@@ -1,6 +1,6 @@
 import unittest
 
-from intervals import *
+from bx.intervals import *
 
 test_intervals = [ 
     IntervalWithValue( 0,  10,    "1" ),
