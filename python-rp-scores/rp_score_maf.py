@@ -21,7 +21,6 @@ except:
 import align.maf
 import array
 import cookbook.doc_optparse
-import seq_numarray
 import sys
 import traceback
 
@@ -39,10 +38,11 @@ def run( data_file, modname, model_file, out_file, mapping, window, shift, low, 
     mafs = align.maf.Reader( data_file )
 
     # Score each alignment
-    for maf in mafs:
+    for i, maf in enumerate( mafs ):
         ints = rp.mapping.DNA.translate_list( [ c.text for c in maf.components ] )
         if mapping: ints = mapping.translate( ints )
-        score_windows( maf, array.array( 'i', list( ints ) ), model, out_file, window, shift, low, high )
+        print i
+        score_windows( maf, ints, model, out_file, window, shift, low, high )
 
 def score_windows( maf, string, model, out, window, shift, low, high ):
     if maf.text_size < window: return
@@ -54,8 +54,8 @@ def score_windows( maf, string, model, out, window, shift, low, high ):
     last_pos = None
     chrom = rc.src
     if '.' in chrom: chrom = chrom.split('.')[1]
-    #print >>out, "variableStep chrom=" + chrom
-    print >>out, "fixedStep chrom=%s start=%d step=%d" % ( chrom, abs_pos, shift )
+    print >>out, "variableStep chrom=" + chrom
+    #print >>out, "fixedStep chrom=%s start=%d step=%d" % ( chrom, abs_pos, shift )
     for i, c in enumerate( text ):
         if i + window >= len( text ): break
         if c != '-': abs_pos += 1
@@ -65,8 +65,8 @@ def score_windows( maf, string, model, out, window, shift, low, high ):
                 if abs_pos == last_pos: continue
                 if score > high: score = high
                 elif score < low: score = low
-                # print >>out, abs_pos, round( score, 6 )
-                print >>out, round( score, 6 )
+                print >>out, abs_pos, round( score, 6 )
+                # print >>out, round( score, 6 )
                 last_pos = abs_pos
 
 def getopt( options, name, default ):

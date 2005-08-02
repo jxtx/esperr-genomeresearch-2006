@@ -63,17 +63,21 @@ cdef class CharToIntArrayMapping:
         
         # Length of result
         text_len = len( strings[0] )
-        
+
         # Init result array
         rval = zeros( text_len, 'i' )
         PyObject_AsWriteBuffer( rval, <void **> &t_buf, &t_len )  
-              
+
         # Loop over seqs and accumulate result values
         factor = 1
         for string in strings:
             PyString_AsStringAndSize( string, <char **> &s_buf, &s_len )
             for i from 0 <= i < text_len:
-                t_buf[i] = t_buf[i] + ( self.table[ s_buf[i] ] * factor )
+                if t_buf[i] >= 0: 
+                    if self.table[ s_buf[i] ] == -1: 
+                        t_buf[i] = -1
+                    else: 
+                        t_buf[i] = t_buf[i] + ( self.table[ s_buf[i] ] * factor )
             factor = factor * self.out_size
         return rval
         
@@ -105,7 +109,7 @@ cdef class IntToIntMapping:
         free( self.table )
 
     def set_mapping( self, int index, int symbol ):
-        assert ( 0 <= index < self.in_size )
+        assert ( 0 <= index < self.in_size ), "%d not between 0 and %s" % ( index, self.in_size )
         self.table[index] = symbol
         if self.out_size <= symbol:
             self.out_size = symbol + 1
@@ -122,11 +126,15 @@ cdef class IntToIntMapping:
         PyObject_AsWriteBuffer( rval, <void **> &t_buf, &t_len )
         # Translate
         for i from 0 <= i < s_len:
-            t_buf[i] = self.table[ s_buf[ i ] ]
+            if s_buf[i] == -1:
+                t_buf[i] = -1
+            else:
+                t_buf[i] = self.table[ s_buf[ i ] ]
         # Done
         return rval
 
     def __getitem__( self, int x ):
+        if x == -1: return -1
         assert 0 <= x < self.in_size
         return self.table[ x ]
 

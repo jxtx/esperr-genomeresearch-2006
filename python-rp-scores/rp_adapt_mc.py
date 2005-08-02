@@ -19,23 +19,18 @@ import cookbook.doc_optparse
 import os.path
 import random
 import sys
+import time
 import traceback
 
 from Numeric import *
-
 from cookbook.progress_bar import *
-from rp import cv, io
 from itertools import *
 
-#import rp.models.averaging as model
-#import rp.models.standard as model
-#import rp.models.tree as model
+import rp.cv
+import rp.io
 import rp.models
-
 import rp.mapping
 
-deafult_modname = "tree_pruned_1:N=10,D=0.01"
-default_modorder = 2
 
 stop_size = 5
 fold = 5
@@ -50,10 +45,12 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
     merit_out = open( os.path.join( out_dir, 'merits.txt' ), 'w' )
 
     # Read integer sequences
-    pos_strings = list( io.get_reader( pos_file, format, None ) )
-    neg_strings = list( io.get_reader( neg_file, format, None ) )
+    print >>sys.stderr, "Loading training data"
+    pos_strings = list( rp.io.get_reader( pos_file, format, None ) )
+    neg_strings = list( rp.io.get_reader( neg_file, format, None ) )
 
     # Apply initial mapping immediately, to get the 'atoms' we will then collapse
+    print >>sys.stderr, "Applying initial mapping"
     pos_strings = [ atom_mapping.translate( s ) for s in pos_strings ]
     neg_strings = [ atom_mapping.translate( s ) for s in neg_strings ]
 
@@ -67,8 +64,8 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
     can_expand = compress( atom_counts > 10, arange( len( atom_counts ) ) )
 
     # Handling bad columns in the training data is not obvious, so don't do it for now
-    for string in chain( pos_strings, neg_strings ):
-        assert -1 not in string, "Cannot have invalid columns (map to -1) in training data"
+    # for string in chain( pos_strings, neg_strings ):
+    #    assert -1 not in string, "Cannot have invalid columns (map to -1) in training data"
 
     best_merit_overall = 0
     best_mapping_overall = None
@@ -80,6 +77,8 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
     # 
     last_force_counter = 0
 
+    print >>sys.stderr, "Searching"
+
     # Collapse
     while 1:
 
@@ -89,6 +88,9 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
         best_merit = 0
         best_mapping = None
 
+        clock = time.clock()
+        cv_runs = 0
+
         # First try a bunch of collapses
         if symbol_count > stop_size:
             pairs = all_pairs( symbol_count )
@@ -96,6 +98,7 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
             for i, j in pairs:
                 new_mapping = mapping.collapse( i, j )
                 merit = calc_merit( pos_strings, neg_strings, new_mapping, modname, modorder )
+                cv_runs += 1
                 if merit > best_merit:
                     best_merit = merit
                     best_mapping = new_mapping
@@ -106,9 +109,12 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
             new_mapping = mapping.expand( i )
             if new_mapping.get_out_size() == symbol_count: continue
             merit = calc_merit( pos_strings, neg_strings, new_mapping, modname, modorder )
+            cv_runs += 1
             if merit > best_merit:
                 best_merit = merit
                 best_mapping = new_mapping
+
+        clock = time.clock() - clock
 
         mapping = best_mapping
 
@@ -133,8 +139,8 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
             mapping_out.close()
             out_counter += 1
 
-        print >>sys.stderr, "%06d, New best merit: %2.2f%%, size: %d, overall best: %2.2f%% at %06d" \
-            % ( step_counter, best_merit * 100, mapping.get_out_size(), best_merit_overall * 100, best_merit_overall_index  )
+        print >>sys.stderr, "%06d, New best merit: %2.2f%%, size: %d, overall best: %2.2f%% at %06d, cvs per sec: %f" \
+            % ( step_counter, best_merit * 100, mapping.get_out_size(), best_merit_overall * 100, best_merit_overall_index, clock/cv_runs  )
 
         # If we have gone 50 steps without improving over the best, restart from best
         if step_counter > restart_counter + 50:
@@ -177,7 +183,7 @@ def calc_merit( pos_strings, neg_strings, mapping, modname, modorder ):
     # Cross validate using those strings
     radix = mapping.get_out_size()
     model_factory = lambda d0, d1: rp.models.train( modname, modorder, radix, d0, d1 )
-    cv_engine = cv.CV( model_factory, pos_strings, neg_strings, fold=fold, passes=passes )
+    cv_engine = rp.cv.CV( model_factory, pos_strings, neg_strings, fold=fold, passes=passes )
     cv_engine.run()
     # Merit is TP + TN
     return ( cv_engine.cls1.pos / ( len( pos_strings ) * passes ) + cv_engine.cls2.neg / ( len( neg_strings ) * passes ) ) / 2

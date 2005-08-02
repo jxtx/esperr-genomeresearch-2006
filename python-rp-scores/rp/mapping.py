@@ -52,7 +52,8 @@ def second_mapping_from_file( f, first_mapping ):
         
     for column, symbol in zip( columns, symbols ):
         index = DNA.translate_list( list( column ) )[0]
-        mapping.set_mapping( first_mapping[index], symbol )
+        if first_mapping[index] >= 0:
+            mapping.set_mapping( first_mapping[index], symbol )
 
     return mapping
 

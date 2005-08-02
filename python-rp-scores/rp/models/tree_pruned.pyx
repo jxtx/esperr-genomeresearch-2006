@@ -295,7 +295,7 @@ cdef class Model:
         else:
             assert start + length <= buf_len
         s = score_string( self.order, self.radix, self.tree, buf, start, length )
-        if s is None: raise "No valid data in region to be scored"
+        # if s is None: raise "No valid data in region to be scored"
         return s
 
     def to_file( self, file ):

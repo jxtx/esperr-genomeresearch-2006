@@ -1,0 +1,266 @@
+#!/usr/bin/python
+
+"""
+Collapse from a starting alphabet to a series of nested alphabets using
+cross validation as 'merit'.
+
+usage: %prog pos_data neg_data out_dir [options]
+   -f, --format=NAME:   Format of input data. 'ints' by default, or 'maf'
+   -a, --atoms=FILE:    A mapping specifying the largest set of symbols (these never get broken)
+   -m, --mapping=FILE:  A mapping (alphabet reduction) to apply to each sequence
+   -M, --model=NAME:    Name of model to user
+   -o, --order=D:       Order (max order?) or model
+   -F, --fold=N:        Fold for cross validation
+   -P, --passes=N:      Passes for cross validation
+   -l, --loo:           Use leave-one-out cross validation rather than folds
+"""
+
+from __future__ import division
+
+import align.maf
+import cookbook.doc_optparse
+import os.path
+import random
+import sys
+import traceback
+
+from Numeric import *
+from cookbook.progress_bar import *
+from itertools import *
+
+import rp.cv
+import rp.io
+import rp.models
+import rp.mapping
+
+# Startup pypar and get some info about what node we are
+import pypar 
+nodes = pypar.size() 
+node_id = pypar.rank() 
+print "I am node %d of %d" % ( node_id, nodes )
+
+stop_size = 5
+
+fold = 10
+passes = 10
+loo = False
+
+modname = None
+modorder = None
+
+samp_size_collapse = ( 256 // nodes )
+samp_size_expand = ( 64 // nodes )
+
+def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping ):
+
+    # Read integer sequences
+    pos_strings = list( rp.io.get_reader( pos_file, format, None ) )
+    neg_strings = list( rp.io.get_reader( neg_file, format, None ) )
+
+    # Apply initial mapping immediately, to get the 'atoms' we will then collapse
+    pos_strings = [ atom_mapping.translate( s ) for s in pos_strings ]
+    neg_strings = [ atom_mapping.translate( s ) for s in neg_strings ]
+
+    # Count how many times each atom appears in the training data
+    atom_counts = zeros( atom_mapping.get_out_size() )
+    for string in chain( pos_strings, neg_strings ):
+        for val in string:
+            atom_counts[ val ] += 1
+
+    # Valid candiates for expansion must occur more than 10 times in the training data
+    can_expand = compress( atom_counts > 10, arange( len( atom_counts ) ) )
+
+    # Handling bad columns in the training data is not obvious, so don't do it for now
+    for string in chain( pos_strings, neg_strings ):
+        assert -1 not in string, "Cannot have invalid columns (map to -1) in training data"
+
+    # Open merit output
+    merit_out = open( os.path.join( out_dir, 'merits.txt' ), 'w' )
+
+    best_merit_overall = 0
+    best_mapping_overall = None
+    index_best_merit_overall = 0
+    out_counter = 0
+
+    step_counter = 0
+    last_force_counter = 0
+
+    # Collapse
+    while 1:
+
+        # Sync up nodes at start of each pass
+        pypar.barrier()
+
+        symbol_count = mapping.get_out_size()
+
+        best_i = None
+        best_j = None
+        best_merit = 0
+        best_mapping = None
+
+        # First try a bunch of collapses
+        if symbol_count > stop_size:
+            # Select some random pairs from the region owned by this node
+            pairs = all_pairs( symbol_count )
+            lo, hi = pypar.balance( len( pairs ), nodes, node_id )
+            pairs = pairs[lo:hi]
+            if len( pairs ) > samp_size_collapse: pairs = random.sample( pairs, samp_size_collapse )
+            # Try collapsing each pair 
+            for i, j in pairs:
+                new_mapping = mapping.collapse( i, j )
+                merit = calc_merit( pos_strings, neg_strings, new_mapping )
+                if merit > best_merit:
+                    best_i, best_j = i, j
+                    best_merit = merit
+                    best_mapping = new_mapping
+
+        # Also try a bunch of expansions
+        lo, hi = pypar.balance( len( can_expand ), nodes, node_id )
+        elements = random.sample( can_expand[lo:hi], samp_size_expand )
+        for i in elements:
+            new_mapping = mapping.expand( i )
+            if new_mapping.get_out_size() == symbol_count: continue
+            merit = calc_merit( pos_strings, neg_strings, new_mapping )
+            if merit > best_merit:
+                best_i, best_j = i, None
+                best_merit = merit
+                best_mapping = new_mapping
+
+        best_i, best_j, best_merit = sync_nodes( best_i, best_j, best_merit )
+  
+        # Collapse or expand (if j is None) to get the overall best mapping
+        if best_j is None:
+            best_mapping = mapping.expand( best_i )
+        else:
+            best_mapping = mapping.collapse( best_i, best_j )
+
+        mapping = best_mapping
+
+        # Append merit to merit output (only if the main node)
+        if node_id == 0:
+            print >>merit_out, step_counter, symbol_count, best_merit
+            merit_out.flush()
+
+        if best_merit >= best_merit_overall:
+            best_merit_overall = best_merit
+            best_mapping_overall = best_mapping
+            # So we know what step the best mapping was encountered at
+            best_merit_overall_index = step_counter
+            restart_counter = step_counter
+            # Reset the counter we use to force expansions
+            last_force_counter = step_counter
+            # Write best mapping to a file
+            if node_id == 0:
+                mapping_out = open( os.path.join( out_dir, "%03d.mapping" % out_counter ), 'w' )
+                for i, symbol in enumerate( atom_mapping.get_table() ): 
+                    # Apply the 'second' mapping to the atom symbol
+                    if symbol >= 0: symbol = mapping[ symbol ]
+                    print >>mapping_out, str.join( '', rp.mapping.DNA.reverse_map( i, align_count ) ), symbol
+                mapping_out.close()
+            out_counter += 1
+
+        if node_id == 0:
+            print >>sys.stderr, "%06d, New best merit: %2.2f%%, size: %d, overall best: %2.2f%% at %06d" \
+                  % ( step_counter, best_merit * 100, mapping.get_out_size(), best_merit_overall * 100, best_merit_overall_index  )
+
+        # If we have gone 50 steps without improving over the best, restart from best
+        if step_counter > restart_counter + 50:
+            if node_id == 0:
+                print >>sys.stderr, "Restarting from best mapping"
+                print >>merit_out, step_counter, "RESTART"
+            mapping = best_mapping_overall
+            restart_counter = step_counter
+            # Immediately force expansions after restart
+            last_force_counter = 0
+
+        if step_counter > last_force_counter + 20:
+            last_force_counter = step_counter
+            if node_id == 0:
+                print >>sys.stderr, "Forcing expansions"
+                print >>merit_out, step_counter, "FORCED EXPANSIONS"
+            lo, hi = pypar.balance( len( can_expand ), nodes, node_id )
+            my_can_expand = can_expand[lo:hi]
+            for i in range( 5 ):
+                symbol_count = mapping.get_out_size()
+                best_merit = 0
+                best_i = None
+                best_mapping = None
+                for i in random.sample( my_can_expand, samp_size_expand ):
+                    new_mapping = mapping.expand( i )
+                    if new_mapping.get_out_size() == symbol_count: continue
+                    merit = calc_merit( pos_strings, neg_strings, new_mapping )
+                    if merit > best_merit:
+                        best_i = i
+                        best_merit = merit
+                        best_mapping = new_mapping
+                best_i, best_j, best_merit = sync_nodes( best_i, None, best_merit )
+                assert best_j == None
+                best_mapping = mapping.expand( best_i )
+                mapping = best_mapping
+                
+        step_counter += 1
+
+def sync_nodes( best_i, best_j, best_merit ):
+    # Aggregate results from all nodes
+    if node_id != 0:
+        # Send best i, j, merit to the master
+        pypar.send( ( best_i, best_j, best_merit ), 0 )
+        # Get back the overall best i, j, merit from the master
+        best_i, best_j, best_merit = pypar.receive( 0 )
+    else:
+        # I am the master, get results from all other nodes and determine
+        # which had the best merit
+        for other_node_id in range( 1, nodes ):
+            i, j, merit = pypar.receive( other_node_id )
+            if merit > best_merit:
+                best_i, best_j, best_merit = i, j, merit
+        # Send back the overall bests
+        for other_node_id in range( 1, nodes ):
+            pypar.send( ( best_i, best_j, best_merit ), other_node_id )
+    return best_i, best_j, best_merit
+
+def all_pairs( n ):
+    rval = []
+    for i in range( 0, n ):
+        for j in range( i + 1, n ):
+            rval.append( ( i, j ) )
+    return rval
+
+def calc_merit( pos_strings, neg_strings, mapping ):
+    # Apply mapping to strings
+    pos_strings = [ mapping.translate( s ) for s in pos_strings ]
+    neg_strings = [ mapping.translate( s ) for s in neg_strings ]
+    # Cross validate using those strings
+    radix = mapping.get_out_size()
+    model_factory = lambda d0, d1: rp.models.train( modname, modorder, radix, d0, d1 )
+    cv_engine = rp.cv.CV( model_factory, pos_strings, neg_strings, fold=fold, passes=passes, loo=loo )
+    cv_engine.run()
+    # Merit is TP + TN
+    return ( cv_engine.cls1.pos / ( len( pos_strings ) * passes ) + cv_engine.cls2.neg / ( len( neg_strings ) * passes ) ) / 2
+
+def main():
+
+    global modname, modorder, fold, passes, loo
+
+    # Parse command line
+
+    options, args = cookbook.doc_optparse.parse( __doc__ )
+
+    if 1:
+        pos_fname, neg_fname, out_dir = args
+        align_count, atom_mapping = rp.mapping.alignment_mapping_from_file( file( options.atoms ) )
+        if options.mapping: mapping = rp.mapping.second_mapping_from_file( file( options.mapping ), atom_mapping )
+        else: mapping = rp.mapping.identity_mapping( atom_mapping.get_out_size() )
+        modname = options.model
+        modorder = int( options.order )
+        if options.fold: fold = int( options.fold )
+        if options.passes: fold = int( options.passes)
+        loo = bool( options.loo )
+        
+    #except:
+    #    cookbook.doc_optparse.exit()
+
+    run( open( pos_fname ), open( neg_fname ), out_dir, options.format, align_count, atom_mapping, mapping )
+
+
+if __name__ == "__main__": main()
