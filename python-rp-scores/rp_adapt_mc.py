@@ -140,7 +140,7 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
             out_counter += 1
 
         print >>sys.stderr, "%06d, New best merit: %2.2f%%, size: %d, overall best: %2.2f%% at %06d, cvs per sec: %f" \
-            % ( step_counter, best_merit * 100, mapping.get_out_size(), best_merit_overall * 100, best_merit_overall_index, clock/cv_runs  )
+            % ( step_counter, best_merit * 100, mapping.get_out_size(), best_merit_overall * 100, best_merit_overall_index, cv_runs/clock  )
 
         # If we have gone 50 steps without improving over the best, restart from best
         if step_counter > restart_counter + 50:
