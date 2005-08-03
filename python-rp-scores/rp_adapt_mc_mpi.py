@@ -22,6 +22,7 @@ import cookbook.doc_optparse
 import os.path
 import random
 import sys
+import time
 import traceback
 
 from Numeric import *
@@ -48,8 +49,8 @@ loo = False
 modname = None
 modorder = None
 
-samp_size_collapse = ( 256 // nodes )
-samp_size_expand = ( 64 // nodes )
+samp_size_collapse = ( 30 // nodes )
+samp_size_expand = ( 10 // nodes )
 
 def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping ):
 
@@ -88,6 +89,9 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
     # Collapse
     while 1:
 
+        clock = time.clock()
+        cv_runs = 0
+
         # Sync up nodes at start of each pass
         pypar.barrier()
 
@@ -109,6 +113,7 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
             for i, j in pairs:
                 new_mapping = mapping.collapse( i, j )
                 merit = calc_merit( pos_strings, neg_strings, new_mapping )
+                cvruns += 1
                 if merit > best_merit:
                     best_i, best_j = i, j
                     best_merit = merit
@@ -121,12 +126,15 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
             new_mapping = mapping.expand( i )
             if new_mapping.get_out_size() == symbol_count: continue
             merit = calc_merit( pos_strings, neg_strings, new_mapping )
+            cv_runs += 1
             if merit > best_merit:
                 best_i, best_j = i, None
                 best_merit = merit
                 best_mapping = new_mapping
 
-        best_i, best_j, best_merit = sync_nodes( best_i, best_j, best_merit )
+        best_i, best_j, best_merit, cv_runs = sync_nodes( best_i, best_j, best_merit, cv_runs )
+
+        clock = time.clock() - clock
   
         # Collapse or expand (if j is None) to get the overall best mapping
         if best_j is None:
@@ -160,8 +168,8 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
             out_counter += 1
 
         if node_id == 0:
-            print >>sys.stderr, "%06d, New best merit: %2.2f%%, size: %d, overall best: %2.2f%% at %06d" \
-                  % ( step_counter, best_merit * 100, mapping.get_out_size(), best_merit_overall * 100, best_merit_overall_index  )
+            print >>sys.stderr, "%06d, New best merit: %2.2f%%, size: %d, overall best: %2.2f%% at %06d, cvs/sec: %f" \
+                  % ( step_counter, best_merit * 100, mapping.get_out_size(), best_merit_overall * 100, best_merit_overall_index, cv_runs/clock  )
 
         # If we have gone 50 steps without improving over the best, restart from best
         if step_counter > restart_counter + 50:
@@ -193,31 +201,32 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
                         best_i = i
                         best_merit = merit
                         best_mapping = new_mapping
-                best_i, best_j, best_merit = sync_nodes( best_i, None, best_merit )
+                best_i, best_j, best_merit, cv_runs = sync_nodes( best_i, None, best_merit, 0 )
                 assert best_j == None
                 best_mapping = mapping.expand( best_i )
                 mapping = best_mapping
                 
         step_counter += 1
 
-def sync_nodes( best_i, best_j, best_merit ):
+def sync_nodes( best_i, best_j, best_merit, cv_runs ):
     # Aggregate results from all nodes
     if node_id != 0:
         # Send best i, j, merit to the master
-        pypar.send( ( best_i, best_j, best_merit ), 0 )
+        pypar.send( ( best_i, best_j, best_merit, cv_runs ), 0 )
         # Get back the overall best i, j, merit from the master
-        best_i, best_j, best_merit = pypar.receive( 0 )
+        best_i, best_j, best_merit, cv_runs  = pypar.receive( 0 )
     else:
         # I am the master, get results from all other nodes and determine
         # which had the best merit
         for other_node_id in range( 1, nodes ):
-            i, j, merit = pypar.receive( other_node_id )
+            i, j, merit, runs = pypar.receive( other_node_id )
             if merit > best_merit:
                 best_i, best_j, best_merit = i, j, merit
+            cv_runs += runs
         # Send back the overall bests
         for other_node_id in range( 1, nodes ):
-            pypar.send( ( best_i, best_j, best_merit ), other_node_id )
-    return best_i, best_j, best_merit
+            pypar.send( ( best_i, best_j, best_merit, cv_runs ), other_node_id )
+    return best_i, best_j, best_merit, cv_runs
 
 def all_pairs( n ):
     rval = []
