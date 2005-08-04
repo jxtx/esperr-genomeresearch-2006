@@ -185,20 +185,32 @@ cdef Node* to_scores( int radix, Node* probs1, Node* probs2 ):
         # set in which it was not observed. FIXME: no reason to do all this
         # copying here, we should be able to just reuse the parent node
         # by passing down some flag
+# ------- First strategy, require it to be observed in both sets to extend 
+#        elif probs1.children[i] == NULL:
+#            probs1.children[i] = new_node( radix )
+#            if probs1.children[i] == NULL:
+#                free_node( rval, radix )
+#                return NULL
+#            for j from 0 <= j < radix:
+#                probs1.children[i].vals[j] = probs1.vals[j]
+#        elif probs2.children[i] == NULL:
+#            probs2.children[i] = new_node( radix )
+#            if probs2.children[i] == NULL:
+#                free_node( rval, radix )
+#                return NULL
+#            for j from 0 <= j < radix:
+#                probs2.children[i].vals[j] = probs2.vals[j]
+# ------- Alternate strategy, require it to be observed in both sets to extend 
+# ------- if this works, integrate it into probs to make faster  
         elif probs1.children[i] == NULL:
-            probs1.children[i] = new_node( radix )
-            if probs1.children[i] == NULL:
-                free_node( rval, radix )
-                return NULL
-            for j from 0 <= j < radix:
-                probs1.children[i].vals[j] = probs1.vals[j]
+            free_node( probs2.children[i], radix )
+            probs2.children[i] = NULL
+            continue
         elif probs2.children[i] == NULL:
-            probs2.children[i] = new_node( radix )
-            if probs2.children[i] == NULL:
-                free_node( rval, radix )
-                return NULL
-            for j from 0 <= j < radix:
-                probs2.children[i].vals[j] = probs2.vals[j]
+            free_node( probs1.children[i], radix )
+            probs1.children[i] = NULL
+            continue
+# ------- End alternate
         rval.children[i] = to_scores( radix, probs1.children[i], probs2.children[i] )
     return rval
 
