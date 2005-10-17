@@ -140,7 +140,7 @@ void fill_in_counts( int order, int radix, int** counts, int* string, int string
     }
 }
 
-real** counts_to_probs( int order, int radix, int** counts, bool average )
+real** counts_to_probs( int order, int radix, int** counts, bool average, bool backoff )
 {
     int i, row_start, size, prev_size, j, total, index;
     real prob;
@@ -152,7 +152,7 @@ real** counts_to_probs( int order, int radix, int** counts, bool average )
     for ( i = 0; i < order+1; i++ )
     {
         size = matrix_size( i, radix );
-	prev_size = matrix_size( i - 1, radix );
+        prev_size = matrix_size( i - 1, radix );
 
         for ( row_start = 0; row_start < size; row_start += radix )
         {
@@ -181,7 +181,7 @@ real** counts_to_probs( int order, int radix, int** counts, bool average )
 
                 assert( index >= 0 && index < size );
 
-                if ( total == 0 && i > 0 )
+                if ( backoff && total == 0 && i > 0 )
                 {
                     prob = probs[ i - 1 ][ index % prev_size ];
                 }
@@ -197,14 +197,14 @@ real** counts_to_probs( int order, int radix, int** counts, bool average )
                     }
                 }
 
-		if ( average && i > 0 )
-		{
-		    probs[ i ][ index ] = prob + probs[ i - 1 ][ index % prev_size ];
-		}
-		else
-		{
-		    probs[ i ][ index ] = prob;
-		}
+		        if ( average && i > 0 )
+		        {
+		            probs[ i ][ index ] = prob + probs[ i - 1 ][ index % prev_size ];
+		        }
+		        else
+		        {
+		            probs[ i ][ index ] = prob;
+		        }
             }
         }
     }
@@ -282,5 +282,31 @@ bool score_string( int order, int radix, real* score_matrix,
     {
         *rval = 0;
         return false;
+    }
+}
+
+bool score_string_positions( int order, int radix, real* score_matrix, 
+                             int* string, float* target, int start, int length )
+{
+    int i, index;
+    real score = 0;
+    int valid_tuples = 0;
+    int stop = start + length;
+
+    for ( i = start + order; i < stop; i++ )
+    {
+        index = matrix_index( order, radix, string, i );
+
+        // Skip tuples containing invalid symbols
+        if ( index == -1 )
+        {
+            continue;
+        }
+        else 
+        {
+            valid_tuples++;
+        }
+
+        target[i] = score_matrix[ index ];
     }
 }

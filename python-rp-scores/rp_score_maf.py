@@ -10,7 +10,10 @@ usage: %prog data score_matrix out [options]
    -s, --shift=N:      Amount to shift window (deafult 5)
    -b, --low=N:        Truncate to this minimum score
    -e, --high=N:       Truncate to this maximum score
+   -r, --reorder=0,2,1:Reorder the species in each block before scoring.
 """
+
+from __future__ import division
 
 try: 
     import psyco
@@ -18,8 +21,9 @@ try:
 except: 
     pass
 
-import align.maf
-import array
+from Numeric import *
+
+import bx.align.maf
 import cookbook.doc_optparse
 import sys
 import traceback
@@ -28,20 +32,22 @@ import rp.io
 import rp.mapping
 import rp.models
 
-def run( data_file, modname, model_file, out_file, mapping, window, shift, low, high ):
+def run( data_file, modname, model_file, out_file, mapping, window, shift, low, high, reorder ):
 
     # Read model
     model = rp.models.get( modname ).from_file( model_file )
     radix = model.get_radix()
 
     # Open maf file
-    mafs = align.maf.Reader( data_file )
+    mafs = bx.align.maf.Reader( data_file )
 
     # Score each alignment
     for i, maf in enumerate( mafs ):
-        ints = rp.mapping.DNA.translate_list( [ c.text for c in maf.components ] )
+        if reorder: components = [ maf.components[ i ] for i in reorder ]
+        else: components = maf.components
+        ints = rp.mapping.DNA.translate_list( [ c.text for c in components ] )
         if mapping: ints = mapping.translate( ints )
-        print i
+        # print i
         score_windows( maf, ints, model, out_file, window, shift, low, high )
 
 def score_windows( maf, string, model, out, window, shift, low, high ):
@@ -54,19 +60,34 @@ def score_windows( maf, string, model, out, window, shift, low, high ):
     last_pos = None
     chrom = rc.src
     if '.' in chrom: chrom = chrom.split('.')[1]
-    print >>out, "variableStep chrom=" + chrom
-    #print >>out, "fixedStep chrom=%s start=%d step=%d" % ( chrom, abs_pos, shift )
+    scores = array( [ float("nan") ] * len( text ), typecode="f" )
+    model.score_positions( string, scores )
+    # Build cumulative sum of scores AND of number of good words per window (note: nan!=nan)
+    goodwords = cumsum( equal(scores,scores) )
+    putmask( scores, not_equal(scores,scores) , 0 )
+    scores = cumsum( scores )
+    need_header = True
     for i, c in enumerate( text ):
         if i + window >= len( text ): break
         if c != '-': abs_pos += 1
         if abs_pos % shift == 0:
-            score = model.score( string, i, window )
-            if score is not None:
-                if abs_pos == last_pos: continue
+            ngood = goodwords[i+window-1]
+            if i > 0: ngood -= goodwords[i-1]
+            if ngood < 1:
+               if abs_pos != last_pos:
+                   need_header = True
+            elif abs_pos == last_pos:
+                pass
+            else:
+                sumscore = scores[i+window-1]
+                if i > 0: sumscore -= scores[i-1]
+                score = sumscore / ngood
                 if score > high: score = high
                 elif score < low: score = low
-                print >>out, abs_pos, round( score, 6 )
-                # print >>out, round( score, 6 )
+                if need_header:
+                    print >>out, "fixedStep chrom=%s start=%d step=%d" % ( chrom, abs_pos, shift )
+                    need_header = False
+                print >>out, round( score, 6 )
                 last_pos = abs_pos
 
 def getopt( options, name, default ):
@@ -91,11 +112,13 @@ def main():
             mapping = None
         modname = getattr( options, 'model' )
         if modname is None: modname = 'standard'
+        reorder = getopt( options, 'reorder', None )
+        if reorder: reorder = map( int, reorder.split( ',' ) )
     #except:
     #    cookbook.doc_optparse.exit()
 
     out = open( out_fname, "w" )
-    run( open( data_fname ), modname, open( model_fname ), out, mapping, window, shift, low, high )
+    run( open( data_fname ), modname, open( model_fname ), out, mapping, window, shift, low, high, reorder )
     out.close()
 
 if __name__ == "__main__": main()

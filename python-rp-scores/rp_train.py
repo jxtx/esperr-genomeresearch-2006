@@ -11,7 +11,6 @@ usage: %prog pos_data neg_data out [options]
    -M, --model=name:   Name of model to train (default 'standard')
 """
 
-import align.maf
 import array
 import cookbook.doc_optparse
 import sys

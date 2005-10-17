@@ -1,4 +1,4 @@
-import align.maf
+import bx.align.maf
 import array
 import sys
 
@@ -40,7 +40,7 @@ class IntSource( object ):
 
 class MAFSource( object ):
     def __init__( self, f ):
-        self.reader = align.maf.Reader( f )
+        self.reader = bx.align.maf.Reader( f )
     def next( self ):
         maf = self.reader.next()
         if maf is None: return None

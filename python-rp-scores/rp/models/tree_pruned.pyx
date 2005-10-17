@@ -9,6 +9,7 @@ import sys
 
 cdef extern from "Python.h":
     int PyObject_AsReadBuffer(object obj, void **buffer, int *buffer_len) except -1
+    int PyObject_AsWriteBuffer(object obj, void **buffer, int *buffer_len) except -1
     object PyFloat_FromDouble( double v )
 
 cdef extern from "stdlib.h":    
@@ -253,6 +254,35 @@ cdef score_string( int order, int radix, Node* tree, int* text, int start, int l
     else:
         return None
 
+cdef score_string_positions( int order, int radix, Node* tree, int* text, float* target, int start, int length ):
+    """
+    Fill into 'target' scores for each position in 'text' If there is no valid score
+    for a position the value in 'target' wll not be changed
+    """
+    cdef int i, j, good, words, symbol, prefix_symbol
+    cdef Node* cur
+    score = 0
+    words = 0
+    for i from start <= i < start + length:
+        # First, is it a valid word -- may be too stringent but consistent with fixed order
+        if i - order < 0: continue
+        good = 1
+        for j from 0 <= j <= order:
+            if text[i-j] < 0: 
+                good = 0
+        if good == 0: continue
+        # Now walk back and score
+        cur = tree        
+        symbol = text[i]
+        for j from 1 <= j <= order:
+            if i - j < 0: break
+            prefix_symbol = text[i-j]
+            # If we can't go back any further, use this context
+            if cur.children[prefix_symbol] == NULL: break 
+            # Otherwise we step back another symbol
+            cur = cur.children[prefix_symbol]
+        target[i] = cur.vals[ symbol ]
+
 cdef print_node( int level, int radix, Node* node ):
     """
     For debugging, dumps a tree display of a node and all of its children
@@ -310,6 +340,23 @@ cdef class Model:
         # if s is None: raise "No valid data in region to be scored"
         return s
 
+    def score_positions( self, string, target ):
+        """
+        Score string[start:start+length] under the model. If start/length are not
+        specified they default to 0 and the length of the buffer respectively.
+        """
+        assert string.typecode() == "i", "String must be int array"
+        assert target.typecode() == "f", "Target must be float array"
+        cdef int* buf
+        cdef float* t_buf
+        cdef int buf_len, t_buf_len
+        PyObject_AsReadBuffer( string, <void**> &buf, &buf_len )
+        buf_len = buf_len / sizeof( int )
+        PyObject_AsWriteBuffer( target, <void**> &t_buf, &t_buf_len )
+        t_buf_len = t_buf_len / sizeof( float )
+        assert buf_len == t_buf_len, "String and target should have same size"        
+        score_string_positions( self.order, self.radix, self.tree, buf, t_buf, 0, buf_len )
+        
     def to_file( self, file ):
         """
         Write the model to the open file-like object 'file'.

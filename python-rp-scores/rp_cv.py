@@ -13,7 +13,6 @@ usage: %prog pos_data neg_data [options]
    -l, --loo:          Use leave-one-out cross validation (fold is ignored in this case) 
 """
 
-import align.maf
 import array
 import cookbook.doc_optparse
 import sys

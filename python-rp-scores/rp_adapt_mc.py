@@ -14,7 +14,6 @@ usage: %prog pos_data neg_data out_dir [options]
 
 from __future__ import division
 
-import align.maf
 import cookbook.doc_optparse
 import os.path
 import random
