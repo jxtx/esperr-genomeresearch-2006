@@ -90,6 +90,9 @@ cdef class CharToIntArrayMapping:
             factor = floor( factor / self.out_size )
         rval.reverse()
         return rval
+        
+    def get_out_size( self ): 
+        return self.out_size
          
 cdef class IntToIntMapping:
     

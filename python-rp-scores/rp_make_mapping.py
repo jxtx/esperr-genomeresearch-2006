@@ -10,7 +10,7 @@ import rp.mapping
 
 align_count = int( sys.argv[1] )
 
-mapping = rp.mapping.identity_mapping( rp.mapping.DNA_BASE ** align_count )
+mapping = rp.mapping.identity_mapping( rp.mapping.DNA.get_out_size() ** align_count )
 
 for i, symbol in enumerate( mapping.get_table() ):
     print  str.join( '', rp.mapping.DNA.reverse_map( i, align_count ) ), symbol

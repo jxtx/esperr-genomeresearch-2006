@@ -2,9 +2,6 @@ from mapping_helper import *
 
 # Char->Int mapping for DNA characters
                 
-#DNA_BASE=6
-DNA_BASE=5
-                
 DNA = CharToIntArrayMapping()
 DNA.set_mapping( "a", 0 )
 DNA.set_mapping( "A", 0 )
@@ -19,7 +16,7 @@ DNA.set_mapping( "-", 4 )
 
 # Creating mappings
 
-def alignment_mapping_from_file( f ):
+def alignment_mapping_from_file( f, char_mapping=DNA ):
     """Create a mapping from a file of alignment columns"""
         
     columns, symbols = [], []
@@ -30,15 +27,15 @@ def alignment_mapping_from_file( f ):
                 
     align_count = len( columns[0] )
         
-    mapping = IntToIntMapping( DNA_BASE ** align_count )
+    mapping = IntToIntMapping( char_mapping.get_out_size() ** align_count )
         
     for column, symbol in zip( columns, symbols ):
-        index = DNA.translate_list( list( column ) )[0]
+        index = char_mapping.translate_list( list( column ) )[0]
         mapping.set_mapping( index, symbol )
 
     return align_count, mapping
 
-def second_mapping_from_file( f, first_mapping ):
+def second_mapping_from_file( f, first_mapping, char_mapping=DNA ):
         
     columns, symbols = [], []
     for line in f:
@@ -51,7 +48,7 @@ def second_mapping_from_file( f, first_mapping ):
     mapping = IntToIntMapping( first_mapping.get_out_size() )
         
     for column, symbol in zip( columns, symbols ):
-        index = DNA.translate_list( list( column ) )[0]
+        index = char_mapping.translate_list( list( column ) )[0]
         if first_mapping[index] >= 0:
             mapping.set_mapping( first_mapping[index], symbol )
 

@@ -2,6 +2,7 @@
 
 inplace: setup
 	cp target/rp/models/standard.so rp/models
+	cp target/rp/models/simple_periodic.so rp/models
 	cp target/rp/models/tree.so rp/models
 	cp target/rp/models/tree_pruned_1.so rp/models
 	cp target/rp/models/tree_pruned.so rp/models
