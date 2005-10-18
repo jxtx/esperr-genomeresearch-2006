@@ -143,35 +143,36 @@ def train( int order, int radix, pos_strings, neg_strings, **kwargs ):
 
     scores_by_period = <real **> malloc( pos_period * sizeof( real* ) )
 
+    ### Negative model is NOT periodic here! we can reuse it. 
+    ### No wait we can't, it breaks the output which means something is wrong. Ick. 
+    # neg_counts = new_counts( order, radix )
+    # if neg_counts == NULL: raise "Malloc failed (neg counts)"
+    # fill_in( order, radix, neg_counts, neg_strings, 0, 1 )
+    # neg_probs = counts_to_probs( order, radix, neg_counts )
+    # if neg_probs == NULL: raise "Malloc failed (probs)"
+    # free_counts( neg_counts, order )
+
     for phase in range( pos_period ):
-
-        pos_counts = new_counts( order, radix )
+        
         neg_counts = new_counts( order, radix )
-    
-        if pos_counts == NULL or neg_counts == NULL: 
-            raise "Malloc failed (counts)"
-
-        fill_in( order, radix, pos_counts, pos_strings, phase, pos_period )
-        ### Negative model is NOT periodic here!
+        if neg_counts == NULL: raise "Malloc failed (neg counts)"
         fill_in( order, radix, neg_counts, neg_strings, 0, 1 )
-    
-        pos_probs = counts_to_probs( order, radix, pos_counts )
         neg_probs = counts_to_probs( order, radix, neg_counts )
-
-        if pos_counts == NULL or neg_counts == NULL: 
-            raise "Malloc failed (probs)"
-
-        free_counts( pos_counts, order )
+        if neg_probs == NULL: raise "Malloc failed (probs)"
         free_counts( neg_counts, order )
 
+        pos_counts = new_counts( order, radix )
+        if pos_counts == NULL: raise "Malloc failed (counts)"
+        fill_in( order, radix, pos_counts, pos_strings, phase, pos_period )
+        pos_probs = counts_to_probs( order, radix, pos_counts )
+        if pos_probs == NULL: raise "Malloc failed (probs)"
+        free_counts( pos_counts, order )
         scores_by_period[phase] = probs_to_score_matrix( order, radix, 
                                                          pos_probs, neg_probs )
-
-        if scores_by_period[phase] == NULL: 
-            raise "Malloc failed (scores)"
-
+        if scores_by_period[phase] == NULL: raise "Malloc failed (scores)"
         free_probs( pos_probs, order )
-        free_probs( neg_probs, order )
+    
+    # free_probs( neg_probs, order )
 
     rval = Model()
     rval.init( order, radix, scores_by_period, pos_period )
