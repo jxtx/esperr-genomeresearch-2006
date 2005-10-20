@@ -1,4 +1,4 @@
-#include <assert.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,6 +11,9 @@
 #define true 1
 
 #define min(X, Y)  ((X) < (Y) ? (X) : (Y))
+
+#undef NDEBUG
+#include <assert.h>
 
 /**
  * Return the flat size of a matrix having the given tuple size and radix
@@ -52,6 +55,28 @@ int* new_counts( int order, int radix )
     int * result = (int*) malloc( size );
     if ( result == NULL ) return NULL;
     memset( result, 0, size );
+    return result;
+}
+
+int** new_counts_2( int order1, int order2, int radix1, int radix2 )
+{
+    int i;
+    int nmodels = matrix_size( order2, radix1 );
+    int size = matrix_size( order2, radix2 ) * sizeof( int );
+    
+    int ** result = (int**) malloc( nmodels * sizeof( int * ) );
+    if ( result == NULL ) return NULL;
+    
+    for ( i = 0; i < nmodels; i++ )
+    {
+        result[i] = (int*) malloc( size );
+        if ( result[i] == NULL ) return NULL;
+        memset( result[i], 0, size );
+    }
+    
+    // fprintf( stderr, "%d, %d\n", nmodels, size/sizeof(int) );
+    // fflush( stderr ); 
+    
     return result;
 }
 
@@ -108,6 +133,42 @@ void fill_in_counts( int order, int radix, int* counts, int* string, int string_
         assert( index >= 0 && index < max_index );
                     
         counts[ index ] += 1;
+    }
+}
+
+void fill_in_counts_2( int order1, int order2, int radix1, int radix2, 
+                       int** counts, int* string1, int* string2,
+                       int string_len, int phase, int period )
+{
+    int i, model_index, transition_index;
+
+    int max_index1 = matrix_size( order1, radix1 );
+    int max_index2 = matrix_size( order2, radix2 );
+
+    for ( i = phase; i < string_len; i += period )
+    {
+        if ( i < order1 || i < order2 )
+        {
+            continue;
+        }
+        
+        model_index = matrix_index( order2, radix1, string1, i );
+        
+        transition_index = matrix_index( order2, radix2, string2, i );   
+            
+        if ( model_index == -1 || transition_index == -1 )
+        {
+            continue;
+        }
+            
+        assert( model_index >= 0 && model_index < max_index1 );
+        assert( transition_index >= 0 && transition_index < max_index2 );
+        
+        // fprintf( stderr, "fill: %d, %d, %d, %d\n",  order1,  order2,  radix1,  radix2 );   
+        // fprintf( stderr, "----: %d, %d\n", model_index, transition_index );
+        // fflush( stderr );    
+                    
+        counts[ model_index ][ transition_index ] += 1;
     }
 }
 
@@ -213,6 +274,52 @@ bool score_string( int order, int radix, real** score_matrix,
         phase = i % period;
 
         score += score_matrix[ phase ][ index ];
+    }
+
+    if ( valid_tuples > 0 )
+    {
+        *rval = score / (real) valid_tuples;
+	    return true;
+    }
+    else
+    {
+        *rval = 0;
+        return false;
+    }
+}
+
+bool score_string_2( int order1, int order2, int radix1, int radix2, 
+                     real** score_matrix1, real *** score_matrix2,
+                     int* string1, int* string2, 
+                     int start, int length, real* rval, int period )
+{
+    int i, index1, index1b, index2, phase;
+    real score = 0;
+    int valid_tuples = 0;
+    int stop = start + length;
+
+    for ( i = start + order1; i < stop; i++ )
+    {
+        index1 = matrix_index( order1, radix1, string1, i );
+        index1b = matrix_index( order2, radix1, string1, i );
+        index2 = matrix_index( order2, radix2, string2, i );
+
+        // fprintf( stderr, "foo: %d, %d\n", index1, index2 ); fflush( stderr );
+
+        // Skip tuples containing invalid symbols
+        if ( index1 == -1 || index2 == -1 )
+        {
+            continue;
+        }
+        else 
+        {
+            valid_tuples++;
+        }
+        
+        phase = i % period;
+
+        score += score_matrix1[ phase ][ index1 ];
+        score += score_matrix2[ phase ][ index1b ][ index2 ];
     }
 
     if ( valid_tuples > 0 )

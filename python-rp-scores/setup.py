@@ -18,5 +18,6 @@ setup( name = "RP",
                      Extension( "rp.models.tree_pruned", ["rp/models/tree_pruned.pyx"] ), 
                      Extension( "rp.mapping_helper", ["rp/mapping_helper.pyx"] ),
                      Extension( "rp.models.simple_periodic", ["rp/models/simple_periodic.pyx", "rp/models/simple_periodic_core.c"] ),
+                     Extension( "rp.models.complex_periodic", ["rp/models/complex_periodic.pyx", "rp/models/simple_periodic_core.c"] ),
                     ],
        cmdclass = {'build_ext': build_ext} )
