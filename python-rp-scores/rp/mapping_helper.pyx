@@ -112,7 +112,7 @@ cdef class IntToIntMapping:
         free( self.table )
 
     def set_mapping( self, int index, int symbol ):
-        assert ( 0 <= index < self.in_size ), "%d not between 0 and %s" % ( index, self.in_size )
+        assert ( -1 <= index < self.in_size ), "%d not between 0 and %s" % ( index, self.in_size )
         self.table[index] = symbol
         if self.out_size <= symbol:
             self.out_size = symbol + 1

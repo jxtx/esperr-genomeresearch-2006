@@ -25,6 +25,8 @@ class MappingSource( object ):
     def __init__( self, other, mapping ):
         self.other = other
         self.mapping = mapping
+    def __iter__( self ):
+        return self
     def next( self ):
         x = self.other.next()
         if x is None: return None
