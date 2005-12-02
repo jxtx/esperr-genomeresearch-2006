@@ -24,14 +24,17 @@ import rp.io
 import rp.mapping
 import rp.models
 
+from sets import Set
+set = Set
+
 def run( pos_file, neg_file, format, mapping, order, modname ):
 
     pos_blocks = list( bx.align.maf.Reader( pos_file ) )
     neg_blocks = list( bx.align.maf.Reader( neg_file ) )
     
     # Read integer sequences
-    pos_strings = list( mapping.translate( rp.mapping.DNA.translate_list( [ c.text for c in block.components ] ) ) for block in pos_blocks )
-    neg_strings = list( mapping.translate( rp.mapping.DNA.translate_list( [ c.text for c in block.components ] ) ) for block in neg_blocks )
+    pos_strings = list( [ mapping.translate( rp.mapping.DNA.translate_list( [ c.text for c in block.components ] ) ) for block in pos_blocks ] )
+    neg_strings = list( [ mapping.translate( rp.mapping.DNA.translate_list( [ c.text for c in block.components ] ) ) for block in neg_blocks ] )
     
     # Determine radix
     radix = max( map( max, pos_strings ) + map( max, neg_strings ) ) + 1
@@ -41,18 +44,18 @@ def run( pos_file, neg_file, format, mapping, order, modname ):
 
     # Find all words in the training data
     words = words_from_blocks( itertools.chain( pos_blocks, neg_blocks ), order )
-    for word in words:
+    for word, count in words:
         ints = rp.mapping.DNA.translate_list( word )
         ints = mapping.translate( ints )
         assert len( ints ) == order + 1
         scores = array( [ float("nan") ] * len( ints ), typecode="f" )
         model.score_positions( ints, scores )
-        print "|".join( word ), scores[-1]
+        print "%s\t%d\t%0.6f" % ( "|".join( word ), count, scores[-1] )
     
 
 def words_from_blocks( blocks, order ):
     all_words = []
-    all_words_2 = set()
+    all_words_2 = dict()
     for block in blocks:
         for i in range( 0, block.text_size - order ):
             rows = []
@@ -61,8 +64,10 @@ def words_from_blocks( blocks, order ):
             rows = tuple( rows )
             if rows not in all_words_2:
                 all_words.append( rows )
-                all_words_2.add( rows )
-    return all_words
+                all_words_2[ rows ] = 1
+            else:
+                all_words_2[ rows ] += 1
+    return [ ( word, all_words_2[word] ) for word in all_words ]
 
 def main():
 
