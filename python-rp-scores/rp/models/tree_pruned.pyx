@@ -297,6 +297,14 @@ cdef print_node( int level, int radix, Node* node ):
             print i, "->",
             print_node( level+1, radix, node.children[i] )
 
+cdef int count_transition_probs( int radix, Node* node):
+    cdef int rval
+    rval = radix
+    for i from  0 <= i < radix:
+        if node.children[i] != NULL:
+            rval = rval + count_transition_probs( radix, node.children[i] )
+    return rval
+
 cdef class Model:
     """
     Python class that provides the 'Model' interface expected by various RP
@@ -364,6 +372,9 @@ cdef class Model:
         root = Element( "root", order=str(self.order), radix=str(self.radix) )
         root.append( node_to_element( self.order, self.radix, -1, self.tree ) )
         ElementTree( root ).write( file )
+        
+    def count_transition_probs( self ):
+        return count_transition_probs( self.radix, self.tree )
 
     def __dealloc__( self ):
         """
