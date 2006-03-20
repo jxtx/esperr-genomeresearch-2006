@@ -23,6 +23,9 @@ except:
 
 from Numeric import *
 
+import pkg_resources
+pkg_resources.require( "bx-python" )
+
 import bx.align.maf
 import cookbook.doc_optparse
 import sys

@@ -302,7 +302,7 @@ cdef int count_transition_probs( int radix, Node* node):
     rval = radix
     for i from  0 <= i < radix:
         if node.children[i] != NULL:
-            rval = rval + count_transition_probs( radix, node.children[i] )
+            rval = rval + count_transition_probs( radix, node.children[i] ) - 1
     return rval
 
 cdef class Model:

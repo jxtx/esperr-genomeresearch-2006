@@ -4,34 +4,54 @@
 Score a set of sequences using a model
 
 usage: %prog data score_matrix out [options]
-   -f, --format=FILE:  Format of input data. 'ints' by default, or 'maf'
-   -m, --mapping=FILE: A mapping (alphabet reduction) to apply to each sequence (optional)
-   -M, --model=name:   Name of model to train (default 'standard')
+   -f, --format=FILE:   Format of input data. 'ints' by default, or 'maf'
+   -m, --mapping=FILE:  A mapping (alphabet reduction) to apply to each sequence (optional)
+   -M, --model=name:    Name of model to train (default 'standard')
+   -g, --mingood=FLOAT: Minimum fraction of good columns required to produce a score 
 """
 
-import align.maf
-import array
+from __future__ import division
+
+import pkg_resources
+pkg_resources.require( "bx-python" )
+
 import cookbook.doc_optparse
 import sys
 import traceback
+
+from Numeric import *
 
 import rp.io
 import rp.mapping
 import rp.models
 
-def run( data_file, model_file, out_file, format, mapping, modname ):
+nan = float( 'nan' )
+
+def run( data_file, model_file, out_file, format, mapping, modname, mingood ):
 
     # Read model
     model = rp.models.get( modname ).from_file( model_file )
     radix = model.get_radix()
+    order = model.get_order()
 
     # Read integer sequences
     strings = rp.io.get_reader( data_file, format, mapping )
 
     # Score each
     for string in strings:
-        score = model.score( string )
-        print >>out_file, score
+        if mingood is None:
+            score = model.score( string )
+        else:
+            scores = array( [ nan ] * len( string ), typecode="f" )
+            model.score_positions( string, scores )
+            goodwords = equal(scores,scores)
+            ngood = sum( goodwords )
+            putmask( scores, not_equal(scores,scores) , 0 )
+            if ngood / ( len( string ) - order ) >= mingood:
+                score = sum( scores ) / ngood
+            else:
+                score = None
+        print >>out_file, score or "NA"
 
 def main():
 
@@ -45,11 +65,13 @@ def main():
             align_count, mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
         else:
             mapping = None
+        mingood = getattr( options, 'mingood' )
+        if mingood: mingood = float( mingood ) 
     except:
         cookbook.doc_optparse.exit()
 
     out = open( out_fname, "w" )
-    run( open( data_fname ), open( model_fname ), out, options.format, mapping, modname )
+    run( open( data_fname ), open( model_fname ), out, options.format, mapping, modname, mingood )
     out.close()
 
 if __name__ == "__main__": main()

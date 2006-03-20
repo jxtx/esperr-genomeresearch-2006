@@ -11,6 +11,9 @@ usage: %prog pos_data neg_data out [options]
    -M, --model=name:   Name of model to train (default 'standard')
 """
 
+import pkg_resources
+pkg_resources.require( "bx-python" )
+
 import array
 import cookbook.doc_optparse
 import sys
