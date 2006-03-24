@@ -14,6 +14,9 @@ usage: %prog pos_data neg_data out_dir [options]
 
 from __future__ import division
 
+import pkg_resources
+pkg_resources.require( "bx-python" )
+
 import cookbook.doc_optparse
 import os.path
 import random
@@ -38,7 +41,13 @@ passes = 5
 samp_size_collapse = 30
 samp_size_expand = 10
 
+use_statprof = False
+
 def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping, modname, modorder ):
+
+    if use_statprof:
+        import statprof
+        statprof.start()
 
     # Open merit output
     merit_out = open( os.path.join( out_dir, 'merits.txt' ), 'w' )
@@ -65,6 +74,7 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
     # Handling bad columns in the training data is not obvious, so don't do it for now
     # for string in chain( pos_strings, neg_strings ):
     #    assert -1 not in string, "Cannot have invalid columns (map to -1) in training data"
+    
 
     best_merit_overall = 0
     best_mapping_overall = None
@@ -93,7 +103,8 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
         # First try a bunch of collapses
         if symbol_count > stop_size:
             pairs = all_pairs( symbol_count )
-            if len( pairs ) > samp_size_collapse: pairs = random.sample( pairs, samp_size_collapse ) 
+            if len( pairs ) > samp_size_collapse: 
+                pairs = random.sample( pairs, samp_size_collapse ) 
             for i, j in pairs:
                 new_mapping = mapping.collapse( i, j )
                 merit = calc_merit( pos_strings, neg_strings, new_mapping, modname, modorder )
@@ -130,16 +141,14 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
             # Reset the counter we use to force expansions
             last_force_counter = step_counter
             # Write best mapping to a file
-            mapping_out = open( os.path.join( out_dir, "%03d.mapping" % out_counter ), 'w' )
-            for i, symbol in enumerate( atom_mapping.get_table() ): 
-                # Apply the 'second' mapping to the atom symbol
-                if symbol >= 0: symbol = mapping[ symbol ]
-                print >>mapping_out, str.join( '', rp.mapping.DNA.reverse_map( i, align_count ) ), symbol
-            mapping_out.close()
+            write_mapping( mapping, os.path.join( out_dir, "%03d.mapping" % out_counter ) )
             out_counter += 1
 
         print >>sys.stderr, "%06d, New best merit: %2.2f%%, size: %d, overall best: %2.2f%% at %06d, cvs per sec: %f" \
             % ( step_counter, best_merit * 100, mapping.get_out_size(), best_merit_overall * 100, best_merit_overall_index, cv_runs/clock  )
+
+        if use_statprof:
+            statprof.display( sys.stderr )
 
         # If we have gone 50 steps without improving over the best, restart from best
         if step_counter > restart_counter + 50:
@@ -168,6 +177,16 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
                 mapping = best_mapping
         step_counter += 1
 
+def write_mapping( mapping, fname ):
+    """
+    Writes mapping from atom symbols to collapsed symbols (NOT from original
+    columns anymore!)
+    """
+    mapping_out = open( fname, 'w' )
+    for i in range( mapping.get_in_size() ):
+        print >>mapping_out, i, mapping[ i ]
+    mapping_out.close()
+    
 def all_pairs( n ):
     rval = []
     for i in range( 0, n ):
