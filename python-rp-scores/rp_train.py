@@ -35,10 +35,14 @@ def run( pos_file, neg_file, out_file, format, mapping, radix, order, modname ):
         else: radix = max( map( max, pos_strings ) + map( max, neg_strings ) ) + 1
                
     # Build model
+    print "about to train"
     model = rp.models.train( modname, order, radix, pos_strings, neg_strings )
+    print "trained"
 
     # Write to out file
+    print "about to write"
     model.to_file( out_file )
+    print "written"
 
 def main():
 
@@ -53,6 +57,7 @@ def main():
         if modname is None: modname = 'standard'
         if options.mapping:
             align_count, mapping = rp.mapping.alignment_mapping_from_file( file( options.mapping ) )
+            print "Align count:", align_count, "Mapping: ", mapping
         else:
             mapping = None
     except:

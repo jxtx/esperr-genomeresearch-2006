@@ -7,7 +7,8 @@ usage: %prog data score_matrix out [options]
    -f, --format=FILE:   Format of input data. 'ints' by default, or 'maf'
    -m, --mapping=FILE:  A mapping (alphabet reduction) to apply to each sequence (optional)
    -M, --model=name:    Name of model to train (default 'standard')
-   -g, --mingood=FLOAT: Minimum fraction of good columns required to produce a score 
+   -g, --mingood=FLOAT: Minimum fraction of good columns required to produce a score
+   -G, --mincols=INT:   Minimum number of scorable positions 
 """
 
 from __future__ import division
@@ -27,7 +28,7 @@ import rp.models
 
 nan = float( 'nan' )
 
-def run( data_file, model_file, out_file, format, mapping, modname, mingood ):
+def run( data_file, model_file, out_file, format, mapping, modname, mingood, mincols ):
 
     # Read model
     model = rp.models.get( modname ).from_file( model_file )
@@ -39,7 +40,7 @@ def run( data_file, model_file, out_file, format, mapping, modname, mingood ):
 
     # Score each
     for string in strings:
-        if mingood is None:
+        if mingood is None and mincols is None:
             score = model.score( string )
         else:
             scores = array( [ nan ] * len( string ), typecode="f" )
@@ -47,7 +48,9 @@ def run( data_file, model_file, out_file, format, mapping, modname, mingood ):
             goodwords = equal(scores,scores)
             ngood = sum( goodwords )
             putmask( scores, not_equal(scores,scores) , 0 )
-            if ngood / ( len( string ) - order ) >= mingood:
+            if mingood and ( ngood / ( len( string ) - order ) >= mingood ): 
+                score = sum( scores ) / ngood
+            elif mincols and ( ngood >= mincols ):
                 score = sum( scores ) / ngood
             else:
                 score = None
@@ -67,11 +70,13 @@ def main():
             mapping = None
         mingood = getattr( options, 'mingood' )
         if mingood: mingood = float( mingood ) 
+        mincols = getattr( options, 'mincols' )
+        if mincols: mincols = int( mincols )
     except:
         cookbook.doc_optparse.exit()
 
     out = open( out_fname, "w" )
-    run( open( data_fname ), open( model_fname ), out, options.format, mapping, modname, mingood )
+    run( open( data_fname ), open( model_fname ), out, options.format, mapping, modname, mingood, mincols )
     out.close()
 
 if __name__ == "__main__": main()

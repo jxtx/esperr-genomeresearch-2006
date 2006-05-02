@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.3
+#!/usr/bin/env python2.4
 
 """
 Score a set of alignments (MAF format) using a model
@@ -68,14 +68,21 @@ def score_windows( maf, string, model, out, window, shift, low, high ):
     # Build cumulative sum of scores AND of number of good words per window (note: nan!=nan)
     goodwords = cumsum( equal(scores,scores) )
     putmask( scores, not_equal(scores,scores) , 0 )
-    scores = cumsum( scores )
+    old_scores = scores
+    scores = cumsum( scores.astype( Float64 ) )
+    import pickle
+    f = open( "foo.bin", "w" )
+    pickle.dump( old_scores, f )
+    f.close()
     need_header = True
     for i, c in enumerate( text ):
         if i + window >= len( text ): break
-        if c != '-': abs_pos += 1
+        if c != '-': 
+            abs_pos += 1
         if abs_pos % shift == 0:
             ngood = goodwords[i+window-1]
-            if i > 0: ngood -= goodwords[i-1]
+            if i > 0: 
+                ngood -= goodwords[i-1]
             if ngood < 1:
                if abs_pos != last_pos:
                    need_header = True
@@ -85,12 +92,15 @@ def score_windows( maf, string, model, out, window, shift, low, high ):
                 sumscore = scores[i+window-1]
                 if i > 0: sumscore -= scores[i-1]
                 score = sumscore / ngood
+                #print "error: ", sum( old_scores[:i+window-1] ), sum( abs( old_scores[:i+window-1] ) )
+                #print i, abs_pos, score, sumscore, ngood, model.score( string, i, window )
+                #assert round( score, 5 ) == round( model.score( string, i, window ), 5 )
                 if score > high: score = high
                 elif score < low: score = low
                 if need_header:
                     print >>out, "fixedStep chrom=%s start=%d step=%d" % ( chrom, abs_pos, shift )
                     need_header = False
-                print >>out, round( score, 6 )
+                print >>out, abs_pos, round( score, 6 )
                 last_pos = abs_pos
 
 def getopt( options, name, default ):

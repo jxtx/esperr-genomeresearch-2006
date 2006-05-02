@@ -43,6 +43,8 @@ samp_size_expand = 10
 
 use_statprof = False
 
+min_cols = 50
+
 def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping, modname, modorder ):
 
     if use_statprof:
@@ -54,8 +56,19 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
 
     # Read integer sequences
     print >>sys.stderr, "Loading training data"
-    pos_strings = list( rp.io.get_reader( pos_file, format, None ) )
-    neg_strings = list( rp.io.get_reader( neg_file, format, None ) )
+    pos_strings = []
+    for i, s in enumerate( rp.io.get_reader( pos_file, format, None ) ): 
+        if sum( s != -1 ) > min_cols:
+            pos_strings.append( s )
+    print >>sys.stderr, "Positive set: %d usable of %d" % ( len( pos_strings ), i+1 )
+    neg_strings = []
+    for i, s in enumerate( rp.io.get_reader( neg_file, format, None ) ): 
+        if sum( s != -1 ) > min_cols:
+            neg_strings.append( s )
+    print >>sys.stderr, "Negitive set: %d usable of %d" % ( len( neg_strings ), i+1 )
+    
+    #pos_strings = list( rp.io.get_reader( pos_file, format, None ) )
+    #neg_strings = list( rp.io.get_reader( neg_file, format, None ) )
 
     # Apply initial mapping immediately, to get the 'atoms' we will then collapse
     print >>sys.stderr, "Applying initial mapping"
@@ -112,6 +125,8 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
                 if merit > best_merit:
                     best_merit = merit
                     best_mapping = new_mapping
+                sys.stderr.write( "." )
+                sys.stderr.flush()
 
         # Also try a bunch of expansions
         elements = random.sample( can_expand, samp_size_expand )
@@ -123,6 +138,8 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
             if merit > best_merit:
                 best_merit = merit
                 best_mapping = new_mapping
+            sys.stderr.write( "." )
+            sys.stderr.flush()
 
         clock = time.clock() - clock
 

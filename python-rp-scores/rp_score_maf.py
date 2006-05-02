@@ -12,6 +12,8 @@ usage: %prog data score_matrix out [options]
    -e, --high=N:       Truncate to this maximum score
 """
 
+from __future__ import division
+
 try: 
     import psyco
     psyco.full()
@@ -19,10 +21,11 @@ except:
     pass
 
 import bx.align.maf
-import array
 import cookbook.doc_optparse
 import sys
 import traceback
+
+from Numeric import *
 
 import rp.io 
 import rp.mapping
@@ -41,7 +44,7 @@ def run( data_file, modname, model_file, out_file, mapping, window, shift, low, 
     for i, maf in enumerate( mafs ):
         ints = rp.mapping.DNA.translate_list( [ c.text for c in maf.components ] )
         if mapping: ints = mapping.translate( ints )
-        print i
+        ## print i
         score_windows( maf, ints, model, out_file, window, shift, low, high )
 
 def score_windows( maf, string, model, out, window, shift, low, high ):
@@ -54,19 +57,35 @@ def score_windows( maf, string, model, out, window, shift, low, high ):
     last_pos = None
     chrom = rc.src
     if '.' in chrom: chrom = chrom.split('.')[1]
+    # Score array
+    scores = array( [ float("nan") ] * len( text ), typecode="f" )
+    model.score_positions( string, scores )
+    # Build cumulative sum of scores AND of number of good words per window (note: nan!=nan)
+    goodwords = equal(scores,scores)
+    putmask( scores, not_equal(scores,scores) , 0 )
+    # Wiggle header 
     print >>out, "variableStep chrom=" + chrom
     #print >>out, "fixedStep chrom=%s start=%d step=%d" % ( chrom, abs_pos, shift )
     for i, c in enumerate( text ):
-        if i + window >= len( text ): break
-        if c != '-': abs_pos += 1
+        if i + window >= len( text ): 
+            break
+        if c != '-': 
+            abs_pos += 1
         if abs_pos % shift == 0:
-            score = model.score( string, i, window )
+            score = sum( scores[i:i+window] )
+            ## score = model.score( string, i, window )
+            ngood = sum( goodwords[i:i+window] )
+            if ngood < 50: 
+                ## print >> out, "Skipping"
+                continue
+            ## print score, ngood
+            score = score / ngood
             if score is not None:
                 if abs_pos == last_pos: continue
                 if score > high: score = high
                 elif score < low: score = low
                 print >>out, abs_pos, round( score, 6 )
-                # print >>out, round( score, 6 )
+                ##   print >>out, round( score, 6 )
                 last_pos = abs_pos
 
 def getopt( options, name, default ):

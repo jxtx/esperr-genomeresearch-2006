@@ -186,7 +186,7 @@ cdef Node* to_scores( int radix, Node* probs1, Node* probs2 ):
         # set in which it was not observed. FIXME: no reason to do all this
         # copying here, we should be able to just reuse the parent node
         # by passing down some flag
-# ------- First strategy, require it to be observed in both sets to extend 
+# ------- First strategy, require it to be observed in either to extend 
 #        elif probs1.children[i] == NULL:
 #            probs1.children[i] = new_node( radix )
 #            if probs1.children[i] == NULL:
