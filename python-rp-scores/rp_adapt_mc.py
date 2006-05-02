@@ -56,24 +56,25 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
 
     # Read integer sequences
     print >>sys.stderr, "Loading training data"
+    pos_strings = list( rp.io.get_reader( pos_file, format, None ) )
+    neg_strings = list( rp.io.get_reader( neg_file, format, None ) )
+
+    # Apply initial mapping immediately, to get the 'atoms' we will then collapse
+    print >>sys.stderr, "Applying initial mapping"
+    t_pos_strings = [ atom_mapping.translate( s ) for s in pos_strings ]
+    t_neg_strings = [ atom_mapping.translate( s ) for s in neg_strings ]
+    
+    print >>sys.stderr, "Filtering for minimum cols"
     pos_strings = []
-    for i, s in enumerate( rp.io.get_reader( pos_file, format, None ) ): 
+    for i, s in enumerate( t_pos_strings ):
         if sum( s != -1 ) > min_cols:
             pos_strings.append( s )
     print >>sys.stderr, "Positive set: %d usable of %d" % ( len( pos_strings ), i+1 )
     neg_strings = []
-    for i, s in enumerate( rp.io.get_reader( neg_file, format, None ) ): 
+    for i, s in enumerate( t_neg_strings ):
         if sum( s != -1 ) > min_cols:
             neg_strings.append( s )
     print >>sys.stderr, "Negitive set: %d usable of %d" % ( len( neg_strings ), i+1 )
-    
-    #pos_strings = list( rp.io.get_reader( pos_file, format, None ) )
-    #neg_strings = list( rp.io.get_reader( neg_file, format, None ) )
-
-    # Apply initial mapping immediately, to get the 'atoms' we will then collapse
-    print >>sys.stderr, "Applying initial mapping"
-    pos_strings = [ atom_mapping.translate( s ) for s in pos_strings ]
-    neg_strings = [ atom_mapping.translate( s ) for s in neg_strings ]
 
     # Count how many times each atom appears in the training data
     atom_counts = zeros( atom_mapping.get_out_size() )
