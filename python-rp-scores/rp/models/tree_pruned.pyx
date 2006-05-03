@@ -122,18 +122,27 @@ cdef to_probs( int radix, Node* node, Node* parent, float discount ):
         else:
             total = total + node.vals[i]
     # Make probabilities
-    if num_zero == 0:
-        # No zero nodes, just straight probabilities
-        for i from 0 <= i < radix: 
-            node.vals[i] = node.vals[i] / total        
-    else:
-        # Spread discount among nodes
-        for i from 0 <= i < radix:
-            if parent == NULL:
-                node.vals[i] = ( (1-discount) * (node.vals[i]/total) ) + ( discount / radix )
-            else:
-                node.vals[i] = ( (1-discount) * (node.vals[i]/total) ) \
-                               + ( (discount) * parent.vals[i] )       
+#     if num_zero == 0:
+#         # No zero nodes, just straight probabilities
+#         for i from 0 <= i < radix: 
+#             node.vals[i] = node.vals[i] / total        
+#     else:
+#         # Spread discount among nodes
+#         for i from 0 <= i < radix:
+#             if parent == NULL:
+#                 node.vals[i] = ( (1-discount) * (node.vals[i]/total) ) + ( discount / radix )
+#             else:
+#                 node.vals[i] = ( (1-discount) * (node.vals[i]/total) ) \
+#                                + ( (discount) * parent.vals[i] )       
+     
+    # Always smooth
+    for i from 0 <= i < radix:
+       if parent == NULL:
+           node.vals[i] = ( (1-discount) * (node.vals[i]/total) ) + ( discount / radix )
+       else:
+           node.vals[i] = ( (1-discount) * (node.vals[i]/total) ) \
+                          + ( (discount) * parent.vals[i] )
+                               
     # Recursively visit children        
     for i from 0 <= i < radix:
         if node.children[i] != NULL:
