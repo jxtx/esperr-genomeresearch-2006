@@ -15,3 +15,14 @@ def train( modname, *args ):
         kwargs = dict()
     
     return get( name ).train( *args, **kwargs )
+
+def prob_train( modname, *args ):
+
+    if ":" in modname:
+        name, modargs = modname.split( ':' )
+        kwargs = dict( [ arg.split( '=' ) for arg in modargs.split( ',' ) ] )
+    else:
+        name = modname
+        kwargs = dict()
+
+    return get( name ).prob_train( *args, **kwargs )

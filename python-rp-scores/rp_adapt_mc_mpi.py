@@ -1,11 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/env python2.4
 
 """
 Collapse from a starting alphabet to a series of nested alphabets using
 cross validation as 'merit'.
 
 usage: %prog training_set_fnames... [options]
-   -o, --out=DIR:       Output directory
+   -d, --out=DIR:       Output directory
    -f, --format=NAME:   Format of input data. 'ints' by default, or 'maf'
    -a, --atoms=FILE:    A mapping specifying the largest set of symbols (these never get broken)
    -m, --mapping=FILE:  A mapping (alphabet reduction) to apply to each sequence
@@ -56,13 +56,13 @@ fold = 5
 passes = 5
 loo = False
 
-samp_size_collapse = 30
-samp_size_expand = 10
-
 min_cols = 50
 
 def run( ts_fnames, out_dir, format, align_count, atom_mapping, mapping, modname, modorder  ):
 
+    samp_size_collapse = 30
+    samp_size_expand = 10
+    
     if mpi:
         # Startup pypar and get some info about what node we are
         import pypar 
@@ -93,8 +93,9 @@ def run( ts_fnames, out_dir, format, align_count, atom_mapping, mapping, modname
             # Add to set
             strings.append( s )
         # Informational
-        message( "Loaded training data from '%s', found %d usable strings and %d skipped" \ 
+        message( "Loaded training data from '%s', found %d usable strings and %d skipped" \
             % ( fname, len( strings ), skipped ) )
+        training_sets.append( strings )
 
     # Count how many times each atom appears in the training data, valid 
     # candiates for expansion must occur more than 10 times in the training 
@@ -163,7 +164,8 @@ def run( ts_fnames, out_dir, format, align_count, atom_mapping, mapping, modname
             elements = random.sample( can_expand, samp_size_expand )
         for i in elements:
             new_mapping = mapping.expand( i )
-            if new_mapping.get_out_size() == symbol_count: continue
+            if new_mapping.get_out_size() == symbol_count: 
+                continue
             merit = calc_merit( training_sets, new_mapping, modname, modorder  )
             cv_runs += 1
             if merit > best_merit:
@@ -198,7 +200,7 @@ def run( ts_fnames, out_dir, format, align_count, atom_mapping, mapping, modname
             last_force_counter = step_counter
             # Write best mapping to a file
             if not mpi or node_id == 0:
-                write_mapping( mapping, os.path.join( out_dir, "%03d.mapping" % out_counter ) )
+                ( mapping, os.path.join( out_dir, "%03d.mapping" % out_counter ) )
             out_counter += 1
 
         message( "%06d, New best merit: %2.2f%%, size: %d, overall best: %2.2f%% at %06d, cvs/sec: %f" \
@@ -231,8 +233,9 @@ def run( ts_fnames, out_dir, format, align_count, atom_mapping, mapping, modname
                 best_mapping = None
                 for i in random.sample( my_can_expand, samp_size_expand ):
                     new_mapping = mapping.expand( i )
-                    if new_mapping.get_out_size() == symbol_count: continue
-                    merit = calc_merit( training_sets new_mapping, modname, modorder  )
+                    if new_mapping.get_out_size() == symbol_count: 
+                        continue
+                    merit = calc_merit( training_sets, new_mapping, modname, modorder  )
                     if merit > best_merit:
                         best_i = i
                         best_merit = merit
@@ -241,7 +244,8 @@ def run( ts_fnames, out_dir, format, align_count, atom_mapping, mapping, modname
                     best_i, best_j, best_merit, cv_runs = sync_nodes( best_i, None, best_merit, 0 )
                     assert best_j == None
                     best_mapping = mapping.expand( best_i )
-                mapping = best_mapping
+                if best_mapping:
+                    mapping = best_mapping
                 
         step_counter += 1
 
@@ -288,13 +292,22 @@ def calc_merit( training_sets, mapping, modname, modorder ):
     # Cross validate using those strings
     radix = mapping.get_out_size()
     
-    # STOPPED HERE!
-    
-    model_factory = lambda d0, d1: rp.models.train( modname, modorder, radix, d0, d1 )
-    cv_engine = rp.cv.CV( model_factory, pos_strings, neg_strings, fold=fold, passes=passes )
-    cv_engine.run()
-    # Merit is TP + TN
-    return ( cv_engine.cls1.pos / ( len( pos_strings ) * passes ) + cv_engine.cls2.neg / ( len( neg_strings ) * passes ) ) / 2
+    if len( training_sets ) == 2:
+        pos_strings, neg_strings = training_sets
+        model_factory = lambda d0, d1: rp.models.train( modname, modorder, radix, d0, d1 )
+        cv_engine = rp.cv.CV( model_factory, pos_strings, neg_strings, fold=fold, passes=passes )
+        cv_engine.run()
+        # Merit is TP + TN
+        return ( cv_engine.cls1.pos / ( len( pos_strings ) * passes ) + cv_engine.cls2.neg / ( len( neg_strings ) * passes ) ) / 2
+    elif len( training_sets ) > 2:
+        model_factory = lambda d: rp.models.prob_train( modname, modorder, radix, d )    
+        cv_engine = rp.cv.MultiCV( model_factory, training_sets, fold=fold, passes=passes )
+        cv_engine.run()
+        print >> sys.stderr, cv_engine.get_summary()
+        print >> sys.stderr, cv_engine.get_success_rate()
+        return cv_engine.get_success_rate()       
+    else:
+        raise Exception( "No support for '%d' training sets" % len( training_sets ) )
 
 def main():
 
@@ -323,4 +336,5 @@ def main():
     run( ts_fnames, out_dir, options.format, align_count, atom_mapping, mapping, modname, modorder )
 
 
-if __name__ == "__main__": main()
+if __name__ == "__main__": 
+    main()

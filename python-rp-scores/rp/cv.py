@@ -2,6 +2,8 @@
 
 from __future__ import division
 
+from Numeric import argmax
+
 from itertools import *
 from tempfile import mktemp
 
@@ -11,6 +13,63 @@ import os
 import random
 import string
 import sys
+
+
+class MultiCV( object ):
+    def __init__( self, model_class, data, fold=5, passes=5, loo=False ):
+        self.model_class = model_class
+        self.data = data
+        self.ndata = len( data )
+        self.fold = fold
+        self.passes = passes
+        self.loo = loo
+    def get_success_rate( self ):
+        total = 0
+        for c in self.cls:
+            total += ( c.pos / c.get_total() )
+        return total / len( self.cls )
+    def get_summary( self ):
+        return ", ".join( [ "%d / %d" % ( self.cls[i].pos, self.cls[i].get_total() ) for i in range( self.ndata ) ] )
+    def run( self ):
+        if self.loo: 
+            self.run_loo()
+        else: 
+            self.run_folds()
+    def run_folds( self ):
+        # Initialize classifications
+        self.cls = [ CVClassification() for i in range( self.ndata ) ]
+        # Run everything 'passes' times
+        for p in range( self.passes ):
+            # Create random partitions 
+            partitions = []
+            for i, d in enumerate( self.data ):
+                partition = [ i % self.fold for i in range( len( d ) ) ]
+                random.shuffle( partition )
+                partitions.append( partition )
+            # Run each fold
+            for f in range( self.fold ):
+                train_sets = []
+                test_sets = []
+                for partition, data in izip( partitions, self.data ):
+                    train, test = split_by_partition( data, partition, f )
+                    train_sets.append( train )
+                    test_sets.append( test )
+                self.run_fold( train_sets, test_sets )
+    def run_fold( self, train_sets, test_sets ):
+        """Run one fold of the cross validation"""
+        # Build predictor from training sets
+        predictors = []
+        for train in train_sets:
+            predictors.append( self.model_class( train ) )
+        # Score each sequence 
+        for i, train in enumerate( test_sets ):
+            for s in train:
+                scores = [ p.score( s ) for p in predictors ]
+                c = argmax( scores )
+                if c == i:
+                    self.cls[i].pos += 1
+                else:
+                    self.cls[i].neg += 1
 
 class CVClassification( object ):
     def __init__( self ):
@@ -152,3 +211,10 @@ class CV( object ):
             high = low = mid = best_score
         # Return the thresholds
         return low, mid, high
+
+def split_by_partition( set, partition, f ):
+    train, test = [], []
+    for i in range( len( set ) ):
+        if partition[i] == f: test.append( set[i] )
+        else: train.append( set[i] )
+    return train, test

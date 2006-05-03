@@ -67,13 +67,13 @@ cdef int count_for_order( int order, int max_order, int radix, int* s, int slen,
     cdef int i, j, symbol, prefix_symbol
     # If order is 0, just fill in the counts for the root node
     if order == 0:
-        for i from max_order <= i < slen:
+        for i from order <= i < slen:
             symbol = s[i]
             if symbol < 0: continue
             root.vals[ symbol ] = root.vals[ symbol ] + 1
         return 1
     # With longer orders, we walk the tree for the context at each position
-    for i from max_order <= i < slen:
+    for i from order <= i < slen:
         # Start the cursor at the root of the tree
         cur = root
         # Get the symbol we are 'transitioning to'
@@ -138,6 +138,13 @@ cdef to_probs( int radix, Node* node, Node* parent, float discount ):
     for i from 0 <= i < radix:
         if node.children[i] != NULL:
             to_probs( radix, node.children[i], node, discount )
+
+cdef to_logs( int radix, Node* node  ):
+    cdef int i
+    for i from 0 <= i < radix:
+        node.vals[ i ] = log( node.vals[ i ] )
+        if node.children[i] != NULL:
+            to_logs( radix, node.children[i] )
 
 cdef prune( int current_depth, int desired_depth, int radix, Node* node, int N ):
     """
@@ -215,7 +222,7 @@ cdef Node* to_scores( int radix, Node* probs1, Node* probs2 ):
         rval.children[i] = to_scores( radix, probs1.children[i], probs2.children[i] )
     return rval
 
-cdef score_string( int order, int radix, Node* tree, int* text, int start, int length ):
+cdef score_string( int order, int radix, Node* tree, int* text, int start, int length, int norm ):
     """
     Score a string of integers using a log-odds scoring tree 'tree' as produced
     by to_scores. For each position in string[start:start+length] walk the tree
@@ -250,7 +257,10 @@ cdef score_string( int order, int radix, Node* tree, int* text, int start, int l
         score = score + cur.vals[ symbol ]
         words = words + 1
     if words > 0:
-        return score / <float> words
+        if norm:
+            return score / <float> words
+        else:
+            return score
     else:
         return None
 
@@ -344,7 +354,7 @@ cdef class Model:
             length = buf_len
         else:
             assert start + length <= buf_len
-        s = score_string( self.order, self.radix, self.tree, buf, start, length )
+        s = score_string( self.order, self.radix, self.tree, buf, start, length, 1 )
         # if s is None: raise "No valid data in region to be scored"
         return s
 
@@ -382,6 +392,85 @@ cdef class Model:
         outside the python memory allocator.
         """
         free_node( self.tree, self.radix )
+        
+cdef class ProbModel:
+    cdef int order
+    cdef int radix
+    cdef Node* tree
+    cdef init( self, int order, int radix, Node* tree ):
+        self.order = order
+        self.radix = radix
+        self.tree = tree
+    def get_order( self ):
+        return self.order
+    def get_radix( self ):
+        return self.radix
+    def score( self, string, int start=0, int length=-1 ):
+        cdef int* buf
+        cdef int buf_len
+        PyObject_AsReadBuffer( string, <void**> &buf, &buf_len )
+        buf_len = buf_len / sizeof( int )
+        if length < 0:
+            length = buf_len
+        else:
+            assert start + length <= buf_len
+        s = score_string( self.order, self.radix, self.tree, buf, start, length, 1 )
+        # if s is None: raise "No valid data in region to be scored"
+        return s
+    def to_file( self, file ):
+        root = Element( "root", order=str(self.order), radix=str(self.radix) )
+        root.append( node_to_element( self.order, self.radix, -1, self.tree ) )
+        ElementTree( root ).write( file )
+    ## def count_transition_probs( self ):
+    ##     return count_transition_probs( self.radix, self.tree )
+    def __dealloc__( self ):
+        free_node( self.tree, self.radix )
+        
+def prob_train( int order, int radix, pos_strings, **kwargs ):
+    """
+    NOTE: This one is just for a one class model which can calculate a (log) prob
+    """
+    cdef Node *pos_node
+    cdef ProbModel rval
+    cdef int* buf
+    cdef int buf_len
+    cdef int i
+    cdef int D, N
+    # Convert discount parameter
+    try: 
+        d = float( kwargs['D'] )
+    except: 
+        d = .10
+    assert 0.0 < d < 1.0, "Discount must be between 0 and 1"
+    # Convert pruning parameter
+    try: 
+        N = int( kwargs['N'] )
+    except: 
+        N = 5
+    assert N >= 0, "N must be non-negative"
+    # Create root nodes for count/prob trees
+    pos_node = new_node( radix )
+    if pos_node == NULL: 
+        raise "Malloc failed creating pos root"
+    # Fill in counts one order at a time
+    for i from 0 <= i <= order:
+        # Need to loop over the training set completely for each order so we can
+        # see the counts at that order and decide what nodes get extended
+        for string in pos_strings:
+            PyObject_AsReadBuffer( string, <void**> &buf, &buf_len )
+            if count_for_order( i, order, radix, buf, buf_len / sizeof( int ), pos_node ) == 0:
+                raise "Failed while adding to pos counts"
+        prune( 0, i, radix, pos_node, N )        
+    # Allow model to be dumped to a file for debugging    
+    if 'dump' in kwargs:
+        to_file( order, radix, pos_node, "pos_node.debug" )
+    # Convert counts to probs    
+    to_probs( radix, pos_node, NULL, d )
+    to_logs( radix, pos_node )
+    # Create and return ProbsModel object
+    rval = ProbModel()
+    rval.init( order, radix, pos_node )
+    return rval
 
 def train( int order, int radix, pos_strings, neg_strings, **kwargs ):
     """
