@@ -303,8 +303,8 @@ def calc_merit( training_sets, mapping, modname, modorder ):
         model_factory = lambda d: rp.models.prob_train( modname, modorder, radix, d )    
         cv_engine = rp.cv.MultiCV( model_factory, training_sets, fold=fold, passes=passes )
         cv_engine.run()
-        print >> sys.stderr, cv_engine.get_summary()
-        print >> sys.stderr, cv_engine.get_success_rate()
+        ## print >> sys.stderr, cv_engine.get_summary()
+        ## print >> sys.stderr, cv_engine.get_success_rate()
         return cv_engine.get_success_rate()       
     else:
         raise Exception( "No support for '%d' training sets" % len( training_sets ) )
