@@ -200,7 +200,7 @@ def run( ts_fnames, out_dir, format, align_count, atom_mapping, mapping, modname
             last_force_counter = step_counter
             # Write best mapping to a file
             if not mpi or node_id == 0:
-                ( mapping, os.path.join( out_dir, "%03d.mapping" % out_counter ) )
+                write_mapping( mapping, os.path.join( out_dir, "%03d.mapping" % out_counter ) )
             out_counter += 1
 
         message( "%06d, New best merit: %2.2f%%, size: %d, overall best: %2.2f%% at %06d, cvs/sec: %f" \
