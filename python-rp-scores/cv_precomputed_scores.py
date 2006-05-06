@@ -1,8 +1,21 @@
-#!/usr/bin/env python2.3
+#!/usr/bin/env python2.4
+
+"""
+Use cross validation to evaluate a model for some training data.
+
+usage: %prog pos_data neg_data [options]
+   -F, --fold=N:       Fold (default 5)
+   -M, --model=name:   Name of model to train (default 'standard')
+   -l, --loo:          Use leave-one-out cross validation (fold is ignored in this case) 
+"""
 
 from __future__ import division
 
-from Numeric import argmax
+import array
+import cookbook.doc_optparse
+import sys
+import traceback
+import time
 
 from itertools import *
 from tempfile import mktemp
@@ -14,76 +27,7 @@ import random
 import string
 import sys
 
-
-class MultiCV( object ):
-    def __init__( self, model_class, data, fold=5, passes=5, loo=False ):
-        self.model_class = model_class
-        self.data = data
-        self.ndata = len( data )
-        self.fold = fold
-        self.passes = passes
-        self.loo = loo
-    def get_success_rate( self ):
-        total = 0
-        for c in self.cls:
-            total += ( c.pos / c.get_total() )
-        return total / len( self.cls )
-    def get_summary( self ):
-        return ", ".join( [ "%d / %d" % ( self.cls[i].pos, self.cls[i].get_total() ) for i in range( self.ndata ) ] )
-    def run( self ):
-        if self.loo: 
-            self.run_loo()
-        else: 
-            self.run_folds()
-    def run_folds( self ):
-        # Initialize classifications
-        self.cls = [ CVClassification() for i in range( self.ndata ) ]
-        # Run everything 'passes' times
-        for p in range( self.passes ):
-            # Create random partitions 
-            partitions = []
-            for i, d in enumerate( self.data ):
-                partition = [ i % self.fold for i in range( len( d ) ) ]
-                random.shuffle( partition )
-                partitions.append( partition )
-            # Run each fold
-            for f in range( self.fold ):
-                train_sets = []
-                test_sets = []
-                for partition, data in izip( partitions, self.data ):
-                    train, test = split_by_partition( data, partition, f )
-                    train_sets.append( train )
-                    test_sets.append( test )
-                self.run_fold( train_sets, test_sets )
-    def run_loo( self ):
-        # Initialize classifications
-        self.cls = [ CVClassification() for i in range( self.ndata ) ]
-        # Run everything 'passes' times
-        for p in range( self.passes ):
-            # Run for each item in positive set
-            for i, d in enumerate( self.data ):
-                for j in range( len( d ) ):                    
-                    train_sets = self.data[:]
-                    train_sets[i] = self.data[i][:]
-                    test_sets = [ [] for _ in range( len( self.data ) ) ]
-                    test_sets[i].append( train_sets[i][j] )
-                    del train_sets[i][j]
-                    self.run_fold( train_sets, test_sets )
-    def run_fold( self, train_sets, test_sets ):
-        """Run one fold of the cross validation"""
-        # Build predictor from training sets
-        predictors = []
-        for train in train_sets:
-            predictors.append( self.model_class( train ) )
-        # Score each sequence 
-        for i, train in enumerate( test_sets ):
-            for s in train:
-                scores = [ p.score( s ) for p in predictors ]
-                c = argmax( scores )
-                if c == i:
-                    self.cls[i].pos += 1
-                else:
-                    self.cls[i].neg += 1
+default_fold = 5
 
 class CVClassification( object ):
     def __init__( self ):
@@ -98,8 +42,7 @@ class CVClassification( object ):
 
 class CV( object ):
 
-    def __init__( self, model_class, data1, data2, fold=5, passes=5, loo=False ):
-        self.model_class = model_class
+    def __init__( self, data1, data2, fold, passes, loo ):
         self.data1 = data1
         self.data2 = data2
         self.fold = fold
@@ -152,20 +95,11 @@ class CV( object ):
 
     def run_fold( self, train_set_1, train_set_2, test_set_1, test_set_2 ):
         """Run one fold of the cross validation"""
-        # Build predictor from training sets
-        predictor = self.model_class( train_set_1, train_set_2 )
-        # Score all sequences
-        train_set_scores_1 = [ predictor.score( x ) for x in train_set_1 ]
-        train_set_scores_2 = [ predictor.score( x ) for x in train_set_2 ]
-        test_set_scores_1 = [ predictor.score( x ) for x in test_set_1 ]
-        test_set_scores_2 = [ predictor.score( x ) for x in test_set_2 ]
-        # Free model
-        del predictor
         # Determine threshold
-        low, mid, high = self.determine_threshold_simple( train_set_scores_1, train_set_scores_2 )
+        low, mid, high = self.determine_threshold( train_set_1, train_set_2 )
         # Classify
-        self.classify( test_set_scores_1, low, mid, high, self.cls1 )
-        self.classify( test_set_scores_2, low, mid, high, self.cls2 )
+        self.classify( test_set_1, low, mid, high, self.cls1 )
+        self.classify( test_set_2, low, mid, high, self.cls2 )
 
     def split_by_partition( self, set, partition, f ):
         train, test = [], []
@@ -225,10 +159,44 @@ class CV( object ):
             high = low = mid = best_score
         # Return the thresholds
         return low, mid, high
+    
+def run( pos_file, neg_file, fold, loo ):
 
-def split_by_partition( set, partition, f ):
-    train, test = [], []
-    for i in range( len( set ) ):
-        if partition[i] == f: test.append( set[i] )
-        else: train.append( set[i] )
-    return train, test
+    pos_strings = [ float( line ) for line in pos_file if line != "nan" ]
+    neg_strings = [ float( line ) for line in neg_file if line != "nan" ]
+
+    print "TP  ~TP  ~FN   FN   FP  ~FP  ~TN   TN       %    time"
+
+    # Cross validate
+    if loo: passes = 1
+    else: passes = 5 
+    cv_engine = CV( pos_strings, neg_strings, fold, passes, loo )
+    start_time = time.time()
+    cv_engine.run()
+    seconds = time.time() - start_time
+
+    print cv_engine.cls1, cv_engine.cls2,
+    print "  %2.2f    %2.2f" % ( cv_engine.get_success_rate()*100, seconds )
+
+def main():
+
+    # Parse command line
+
+    options, args = cookbook.doc_optparse.parse( __doc__ )
+
+    #try:
+    if 1:
+        pos_fname, neg_fname = args
+        if options.fold:
+            fold = int( options.fold )
+        else:
+            fold = default_fold
+        loo = bool( options.loo )    
+    #except:
+    #    cookbook.doc_optparse.exit()
+
+    run( open( pos_fname ), open( neg_fname ), fold, loo )
+    
+    
+if __name__ == "__main__":
+    main()

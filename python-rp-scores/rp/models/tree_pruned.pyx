@@ -564,6 +564,26 @@ def from_file( f ):
     rval.init( order, radix, node )
     return rval
 
+def prob_from_file( f ):
+    """
+    Read a 'Model' from the open file-like object 'f'
+    """
+    cdef int order
+    cdef int radix
+    cdef Node* node
+    cdef ProbModel rval
+
+    tree = parse( f )
+    root = tree.getroot()
+    order = int( root.get( 'order' ) )
+    radix = int( root.get( 'radix' ) )
+
+    node = parse_node( root.find( "node" ), radix )
+
+    rval = ProbModel()
+    rval.init( order, radix, node )
+    return rval
+
 cdef to_file( int order, int radix, Node* node, filename ):
     """
     Write the tree under 'node' to the file named 'filename'. This is used
