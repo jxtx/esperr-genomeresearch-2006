@@ -5,7 +5,7 @@ from __future__ import division
 import psyco_full
 import sys
 
-from Numeric import *
+from numpy import *
 from random import *
 
 from itertools import *
@@ -16,7 +16,7 @@ from sets import Set
 from cookbook.progress_bar import ProgressBar
 
 # Word size
-N = 10
+N = 5
 
 # Treshold for a word to be considered over represented
 T = .90
@@ -38,21 +38,28 @@ def main():
         # Observed 
         observed = kmer_counts( ints, N )
         allowed_keys = observed.keys()
-        #sample_counts = dict( ( key, zeros( R ) ) for key in allowed_keys )
-        #radix = max(ints) + 1
-        #l = len( ints )
-        #tx = learn( ints, radix )
-        #for r in range( R ):
-        #    seq = draw( tx, 0, l )
-        #    for i in range( l - N ):
-        #        key = seq[i:i+N]
-        #        if key in allowed_keys:
-        #            sample_counts[key][r] += 1
-        #for key in allowed_keys:
-        #    pi = sum( observed[key] > sample_counts[key] ) / R
-        #    if pi > T: m[key] = 1
+        sample_counts = dict( ( key, zeros( R ) ) for key in allowed_keys )
+        radix = max(ints) + 1
+        l = len( ints )       
+        tx = learn( ints, radix )
+        for r in range( R ):
+            seq = draw( tx, 0, l )
+            for i in range( l - N ):
+                key = seq[i:i+N]
+                if key in allowed_keys:
+                    sample_counts[key][r] += 1
         for key in allowed_keys:
-            m[key] = observed[key]
+            # Standardize by quantile style
+            sample_counts[key].sort()
+            q = int( len( sample_counts[key] ) * .75 )
+            p75 = sample_counts[key][q]
+            m[key] = observed[ key ] / p75
+            # Threshold style
+            #pi = sum( observed[key] > sample_counts[key] ) / R
+            #if pi > T: m[key] = 1
+            # Just standardize by length style
+            #m[key] = observed[ key ] / l
+            
         # Store the standardized values (sparsely)
         M.append( m )
         # Progress bar update
@@ -66,8 +73,8 @@ def main():
             for key in M[i]:
                 if key in M[j]:
                     in_both += ( M[i][key] * M[j][key] )
-            #in_both = sum( [ key in M[j] for key in M[i] ] )
-            out.write( "\t%d" % in_both )
+            # in_both = sum( [ key in M[j] for key in M[i] ] )
+            out.write( "\t%.9f" % in_both )
         out.write( "\n" )    
         bar.update_and_print( i )
 

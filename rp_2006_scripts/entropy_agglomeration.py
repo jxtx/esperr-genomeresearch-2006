@@ -107,7 +107,7 @@ def find_best_pair( X, D, counts, p_c, entropy, n_clusters ):
     
     for i in range( n ):
         j = row_min_indexes[i]
-        if i < j and col_min_indexes[j] == i:
+        if i < j: # and col_min_indexes[j] == i:
             
             # if plot:
             #     r.points( X[:,0], counts, pch=19, cex=0.5 )
