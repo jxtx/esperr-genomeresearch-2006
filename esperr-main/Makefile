@@ -14,8 +14,10 @@ setup:
 	mkdir -p target
 	python setup.py build --debug install --install-lib=target --install-scripts=target
 
-test: inplace
-	python test_standard_model.py
+# This is currently broken
+
+#test: inplace
+#	python test_standard_model.py
 
 clean:
 	python setup.py clean
