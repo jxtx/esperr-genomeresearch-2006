@@ -10,6 +10,7 @@ usage: %prog data score_matrix out [options]
    -s, --shift=N:      Amount to shift window (deafult 5)
    -b, --low=N:        Truncate to this minimum score
    -e, --high=N:       Truncate to this maximum score
+   -r, --reorder=0,2,1:Reorder the species in each block before scoring.
 """
 
 from __future__ import division
@@ -31,7 +32,7 @@ import rp.io
 import rp.mapping
 import rp.models
 
-def run( data_file, modname, model_file, out_file, mapping, window, shift, low, high ):
+def run( data_file, modname, model_file, out_file, mapping, window, shift, low, high, reorder ):
 
     # Read model
     model = rp.models.get( modname ).from_file( model_file )
@@ -42,9 +43,12 @@ def run( data_file, modname, model_file, out_file, mapping, window, shift, low, 
 
     # Score each alignment
     for i, maf in enumerate( mafs ):
-        ints = rp.mapping.DNA.translate_list( [ c.text for c in maf.components ] )
+        if mapping:
+            assert len( maf.components ) ** rp.mapping.DNA.get_out_size() < mapping.get_in_size()
+        if reorder: components = [ maf.components[ i ] for i in reorder ]
+        else: components = maf.components
+        ints = rp.mapping.DNA.translate_list( [ c.text for c in components ] )
         if mapping: ints = mapping.translate( ints )
-        ## print i
         score_windows( maf, ints, model, out_file, window, shift, low, high )
 
 def score_windows( maf, string, model, out, window, shift, low, high ):
@@ -76,7 +80,6 @@ def score_windows( maf, string, model, out, window, shift, low, high ):
             ## score = model.score( string, i, window )
             ngood = sum( goodwords[i:i+window] )
             if ngood < 50: 
-                ## print >> out, "Skipping"
                 continue
             ## print score, ngood
             score = score / ngood
@@ -97,8 +100,7 @@ def main():
 
     # Parse command line
     options, args = cookbook.doc_optparse.parse( __doc__ )
-    #try:
-    if 1:
+    try:
         data_fname, model_fname, out_fname = args
         window = int( getopt( options, 'window', 100 ) )
         shift = int( getopt( options, 'shift', 5 ) )
@@ -110,11 +112,13 @@ def main():
             mapping = None
         modname = getattr( options, 'model' )
         if modname is None: modname = 'standard'
-    #except:
-    #    cookbook.doc_optparse.exit()
+        reorder = getopt( options, 'reorder', None )
+        if reorder: reorder = map( int, reorder.split( ',' ) )
+    except:
+        cookbook.doc_optparse.exception()
 
     out = open( out_fname, "w" )
-    run( open( data_fname ), modname, open( model_fname ), out, mapping, window, shift, low, high )
+    run( open( data_fname ), modname, open( model_fname ), out, mapping, window, shift, low, high, reorder )
     out.close()
 
 if __name__ == "__main__": main()

@@ -64,6 +64,7 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
     t_pos_strings = [ atom_mapping.translate( s ) for s in pos_strings ]
     t_neg_strings = [ atom_mapping.translate( s ) for s in neg_strings ]
     
+    # Filter elements with few good columns
     print >>sys.stderr, "Filtering for minimum cols"
     pos_strings = []
     for i, s in enumerate( t_pos_strings ):
@@ -74,7 +75,7 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
     for i, s in enumerate( t_neg_strings ):
         if sum( s != -1 ) > min_cols:
             neg_strings.append( s )
-    print >>sys.stderr, "Negitive set: %d usable of %d" % ( len( neg_strings ), i+1 )
+    print >>sys.stderr, "Negative set: %d usable of %d" % ( len( neg_strings ), i+1 )
 
     # Count how many times each atom appears in the training data
     atom_counts = zeros( atom_mapping.get_out_size() )
@@ -84,11 +85,6 @@ def run( pos_file, neg_file, out_dir, format, align_count, atom_mapping, mapping
 
     # Valid candiates for expansion must occur more than 10 times in the training data
     can_expand = compress( atom_counts > 10, arange( len( atom_counts ) ) )
-
-    # Handling bad columns in the training data is not obvious, so don't do it for now
-    # for string in chain( pos_strings, neg_strings ):
-    #    assert -1 not in string, "Cannot have invalid columns (map to -1) in training data"
-    
 
     best_merit_overall = 0
     best_mapping_overall = None
