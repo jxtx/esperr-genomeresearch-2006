@@ -23,5 +23,5 @@ setup( name = "esperr",
                      #Extension( "rp.models.simple_periodic", ["rp/models/simple_periodic.pyx", "rp/models/simple_periodic_core.c"] ),
                      #Extension( "rp.models.complex_periodic", ["rp/models/complex_periodic.pyx", "rp/models/simple_periodic_core.c"] ),
                     ],
-       cmdclass = {'build_ext': build_ext},
-       author="James Taylor" )
+       author="James Taylor",
+       ex )
