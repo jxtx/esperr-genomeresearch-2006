@@ -24,4 +24,6 @@ setup( name = "esperr",
                      #Extension( "rp.models.complex_periodic", ["rp/models/complex_periodic.pyx", "rp/models/simple_periodic_core.c"] ),
                     ],
        author="James Taylor",
-       ex )
+       install_requires = "bx-python >= 0.1.0" 
+)
+
