@@ -1,0 +1,42 @@
+*NOTE:* This template currently only covers creating the initial 
+        substitution model and finding the encoding. Using the
+        final encoding to produce scores is still in progress.
+
+This directory contains a Makefile to demonstrate running the ESPERR
+procedure given two sets of training data in BED format.
+
+The training data should be in files named 'positive.bed' and
+'negative.bed' respectively.
+
+The Makefile contains a number of variables which can be customized. In
+particular the path to the location of the alignment files (MAF format
+indexed with 'maf_build_index.py' may need to be changed).
+
+This example assumes hg17 centric alignments, containing a certain
+set of species. Specifically it was tested using these 17-way alignments:
+
+    http://hgdownload.cse.ucsc.edu/goldenPath/hg17/multiz17way/
+
+The current directory includes sample positive and negative training
+sets, a phylogenetic tree used to create the initial substitution model
+(from Elliott Margulies), and the chromosome length file for hg17.
+
+The procedure should be run in stages:
+
+1) 'make atoms' will run the following steps:
+    - Generate initial substitution model from a sample of alignments
+    - Extract alignments corresponding to your positive and negative
+      training data 
+    - Determine the number of times each alignment column occurs in
+      those sets
+    - Infer the ancestral probability distribution for each column
+    - Run the 'entropy agglomeration' to produce clusters
+    - Extract the clustering corresponding to 75 symbols
+
+2) 'make search' will run the ESPERR search procedure starting from the
+   atom mapping. The search needs to be terminated manually once and
+   acceptable performance has been reached (ctrl-C)
+
+3) 'make best' will extract the best encoding and train the final
+   model using it.
+   
