@@ -1,6 +1,14 @@
-*NOTE:* This template currently only covers creating the initial 
-        substitution model and finding the encoding. Using the
-        final encoding to produce scores is still in progress.
+
+    /--- NOTE ------------------------------------------------
+    | This template currently only covers: 
+    |
+    |   1) creating the initial substitution model 
+    |   2) Running the two stages of ESPERR to an encoding
+    |   3) Using that encoding to create scores for regions
+    |      of the reference genome (specified in bed format)
+    |
+    | Creating genome wide scores from the result mapping and 
+    | model will be covered by another template.
 
 This directory contains a Makefile to demonstrate running the ESPERR
 procedure given two sets of training data in BED format.

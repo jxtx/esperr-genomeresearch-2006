@@ -25,6 +25,9 @@ MOD=random_1mb_windows.mod
 # The species you want to use
 SPECIES=hg17,panTro1,rheMac2,mm7,rn3,canFam2,bosTau2
 
+# The 'reference' species
+REF=hg17
+
 # Large phylogenetic tree from which we will select a subset
 BIG_TREE=bigtree.nh
 
@@ -47,7 +50,7 @@ NEG=negative
 
 # ADVANCED: If this is defined, the negative set will be sampled from ancestral
 # repeats, rather than using the file specified
-# SAMPLE_NEGATIVE_FROM_AR=1
+SAMPLE_NEGATIVE_FROM_AR=1
 
 # This name will be used as the prefix for all generated files
 BASENAME=example
@@ -89,14 +92,14 @@ tree.nh : $(BIG_TREE)
 
 # Creae random sample of genomic windows
 random_1mb_windows.bed : 
-	$(RP)/genome_windows.py hg17 1000000 < $(CHROMLEN) | randomLines 50 > $@
+	$(RP)/genome_windows.py $(REF) 1000000 < $(CHROMLEN) | randomLines 50 > $@
 
 # Extract MAF blocks for random windows
 random_1mb_windows_split_maf: random_1mb_windows.bed
 	mkdir -p $@
 	rm -f $@/*.maf
 	cat $< \
-		| prefix_lines "hg17." \
+		| prefix_lines "$(REF)." \
 		| maf_extract_ranges_indexed.py $(ALIGN)/chr*.maf \
 		| $(BX)/maf_limit_to_species.py $(SPECIES) \
 		| $(BX)/maf_split_by_src.py -c 0 -o $@/
@@ -112,7 +115,7 @@ random_1mb_windows.ss : random_1mb_windows_split_maf
 	
 %.maf : %.bed
 	cat $< \
-	| $(BX)/prefix_lines.py "hg17." \
+	| $(BX)/prefix_lines.py "$(REF)." \
 	| $(BX)/maf_tile_2.py --strand $(SPECIES) $(CHROMLEN) $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf) \
 	| $(BX)/maf_chop.py \
 	| $(BX)/maf_translate_chars.py \
@@ -123,7 +126,7 @@ ifndef SAMPLE_NEGATIVE_FROM_AR
 
 $(NEG).maf : $(NEG).bed $(POS).maf
 	cat $< \
-	| $(BX)/prefix_lines.py "hg17." \
+	| $(BX)/prefix_lines.py "$(REF)." \
 	| $(BX)/maf_tile_2.py --strand $(SPECIES) $(CHROMLEN) $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf) \
 	| $(BX)/maf_chop.py \
 	| $(BX)/maf_translate_chars.py \
@@ -135,12 +138,14 @@ else
 
 NEG=ar
 
+# Sample randomly from AR bed 
+# FIXME: file location should be configurable
 ar_sample.bed : ~/cache/hg17_AR/hum_mus_dog_AR.bed
 	$(BX)/random_lines.py 5000 < $< > $@
 
 ar.maf : ar_sample.bed $(POS).maf
 	cat ar_sample.bed \
-    | $(BX)/prefix_lines.py "hg17." \
+    | $(BX)/prefix_lines.py "$(REF)." \
     | $(BX)//maf_tile_2.py $(SPECIES) $(CHROMLEN) $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf) \
     | $(BX)/maf_chop.py \
     | $(BX)/maf_translate_chars.py \
@@ -153,6 +158,8 @@ endif
 # For the first stages of inferrence we just merge the training sets
 $(BASENAME).maf : $(POS).maf $(NEG).maf
 	cat $^ > $@
+
+# ---- ESPERR Stage 1: Creating ancestral dists and clustering --------------
 
 # Create column counts for all columns with at most 3 missing species
 %.col_counts : %.maf
@@ -172,6 +179,8 @@ $(BASENAME).maf : $(POS).maf $(NEG).maf
 %.ent_agglom.75.mapping : %.adists %.clusters
 	$(RP)/make_mapping_from_clusters.py $^ 75 > $@
 
+# ---- ESPERR Stage 2: Heuristic search -------------------------------------
+
 # Run the search starting from the 'entropy agglomeration' based clustering
 %.adapt : %.mapping
 	mkdir -p $@
@@ -185,6 +194,31 @@ $(BASENAME).maf : $(POS).maf $(NEG).maf
 # Train a scoring matrix using that mapping
 %.sm : %.mapping $(POS).maf $(NEG).maf 
 	$(RP)/rp_train.py $(POS).maf $(NEG).maf $@ -m $< -o $(ORDER) -f maf -M $(MODEL)
-	
+
+# ---- Extracting MAF blocks without chopping -------------------------------
+
+%_tile.maf : %.bed
+	cat $< \
+	| $(BX)/prefix_lines.py "$(REF)." \
+	| $(BX)/maf_tile_2.py --strand $(SPECIES) $(CHROMLEN) $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf) \
+	| $(BX)/maf_translate_chars.py \
+	> $@
+
+# ---- Scoring --------------------------------------------------------------
+
+BEST=$(BASENAME).ent_agglom.75.adapt.best
+
+# Generate scores for each block in a particular MAF file
+%.$(BEST).scores : %.maf $(BEST).sm 
+	$(RP)/rp_score.py $^ $@ -f maf -m $(BEST).mapping -M $(MODEL) -G 50
+
+# Generate scores for sliding window across MAF file
+%.$(BEST).window_scores : %.maf $(BEST).sm 
+	$(RP)/rp_score_maf.py $^ $@ -m $(BEST).mapping -M $(MODEL) -w 100 -s 1 
+
+%.$(BEST).ct : %.$(BEST).window_scores
+	echo 'track type=wiggle_0 name=$*.$(BEST) description="ESPERR Scores for data in $*.maf and model $(BEST)"' > $@
+	cat $< >> $@
+
 # Special rule to prevent 'make' from deleting output
 .SECONDARY:
