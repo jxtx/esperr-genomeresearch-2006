@@ -45,6 +45,10 @@ CHROMLEN=chromlen.txt
 POS=positive
 NEG=negative
 
+# ADVANCED: If this is defined, the negative set will be sampled from ancestral
+# repeats, rather than using the file specified
+# SAMPLE_NEGATIVE_FROM_AR=1
+
 # This name will be used as the prefix for all generated files
 BASENAME=example
 
@@ -108,22 +112,43 @@ random_1mb_windows.ss : random_1mb_windows_split_maf
 	
 %.maf : %.bed
 	cat $< \
-	| $(BX)/prefix_lines "hg17." \
-	| $(BX)/maf_tile_2.py --strand $(SPECIES) /dev/null $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf) \
+	| $(BX)/prefix_lines.py "hg17." \
+	| $(BX)/maf_tile_2.py --strand $(SPECIES) $(CHROMLEN) $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf) \
 	| $(BX)/maf_chop.py \
 	| $(BX)/maf_translate_chars.py \
 	| $(BX)/maf_filter_max_wc.py 50 3 \
 	> $@
 
+ifndef SAMPLE_NEGATIVE_FROM_AR
+
 $(NEG).maf : $(NEG).bed $(POS).maf
 	cat $< \
-	| $(BX)/prefix_lines "hg17." \
-	| $(BX)/maf_tile_2.py --strand $(SPECIES) /dev/null $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf) \
+	| $(BX)/prefix_lines.py "hg17." \
+	| $(BX)/maf_tile_2.py --strand $(SPECIES) $(CHROMLEN) $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf) \
 	| $(BX)/maf_chop.py \
 	| $(BX)/maf_translate_chars.py \
 	| $(BX)/maf_filter_max_wc.py 50 3 \
 	| $(BX)/maf_randomize.py `$(BX)/maf_count.py < $(POS).maf` \
 	> $@	
+
+else	
+
+NEG=ar
+
+ar_sample.bed : ~/cache/hg17_AR/hum_mus_dog_AR.bed
+	$(BX)/random_lines.py 5000 < $< > $@
+
+ar.maf : ar_sample.bed $(POS).maf
+	cat ar_sample.bed \
+    | $(BX)/prefix_lines.py "hg17." \
+    | $(BX)//maf_tile_2.py $(SPECIES) $(CHROMLEN) $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf) \
+    | $(BX)/maf_chop.py \
+    | $(BX)/maf_translate_chars.py \
+    | $(BX)/maf_filter_max_wc.py 50 3 \
+    | maf_randomize.py `$(BX)/maf_count.py < $(POS).maf` \
+    > $@
+
+endif	
 
 # For the first stages of inferrence we just merge the training sets
 $(BASENAME).maf : $(POS).maf $(NEG).maf
