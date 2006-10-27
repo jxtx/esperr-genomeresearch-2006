@@ -186,6 +186,13 @@ $(BASENAME).maf : $(POS).maf $(NEG).maf
 	mkdir -p $@
 	rm -f $@/*
 	$(RP)/rp_adapt_mc_mpi.py $(POS).maf $(NEG).maf -d $@ -f maf -a $< -o $(ORDER) -M $(MODEL)
+
+# Create a 'pbs' job file to run the search instead.
+%.adapt.job : %.mapping job_header.pbs
+	mkdir -p $@
+	rm -f $@/*
+	( cat job_header.pbs; echo $(RP)/rp_adapt_mc_mpi.py $(POS).maf $(NEG).maf -d $@ -f maf -a $< -o $(ORDER)  -M $(MODEL) ) --mpi > $@.job
+	# qsub $@.job
 	
 # Get the best mapping found by the search
 %.adapt.best.mapping : %.adapt
