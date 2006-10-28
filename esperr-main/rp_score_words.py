@@ -11,7 +11,7 @@ usage: %prog pos_data neg_data [options]
    -M, --model=name:   Name of model to train (default 'standard')
 """
 
-from numpy import *
+from Numeric import *
 
 import cookbook.doc_optparse
 import sys

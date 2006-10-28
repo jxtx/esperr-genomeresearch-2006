@@ -2,7 +2,7 @@
 
 from __future__ import division
 
-from numpy import argmax
+from Numeric import argmax
 
 from itertools import *
 from tempfile import mktemp

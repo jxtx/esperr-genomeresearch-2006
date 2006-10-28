@@ -18,7 +18,7 @@ from __future__ import division
 
 import cookbook
 import sys
-from numpy import *
+from Numeric import *
 from scipy.linalg import expm
 
 import bx.phylo.newick

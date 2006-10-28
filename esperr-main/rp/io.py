@@ -2,7 +2,7 @@ import bx.align.maf
 import array
 import sys
 
-from numpy import array
+from Numeric import array
 
 import rp.mapping
 
