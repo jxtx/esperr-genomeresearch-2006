@@ -39,12 +39,15 @@ import rp.models
 import rp.mapping
 
 mpi = False
+pypar = None
+node_id = -1
+nodes = 0
 
 def message( *args ):
     """
     Write a message to stderr (but only on the master node if we are using pypar)
     """
-    global mpi
+    global mpi, node_id
     if not mpi or node_id == 0:
         sys.stderr.write( ' '.join( map( str, args ) ) )
         sys.stderr.write( '\n' )
@@ -64,8 +67,9 @@ def run( ts_fnames, out_dir, format, align_count, atom_mapping, mapping, modname
     samp_size_expand = 10
     
     if mpi:
+        global pypar, node_id, nodes
         # Startup pypar and get some info about what node we are
-        import pypar 
+        pypar = __import__( 'pypar' )
         nodes = pypar.size() 
         node_id = pypar.rank() 
         print "I am node %d of %d" % ( node_id, nodes )
