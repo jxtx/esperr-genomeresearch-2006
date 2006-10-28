@@ -29,7 +29,7 @@ import sys
 import time
 import traceback
 
-from Numeric import *
+from numpy import *
 from cookbook.progress_bar import *
 from itertools import *
 

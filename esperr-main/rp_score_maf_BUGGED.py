@@ -21,7 +21,7 @@ try:
 except: 
     pass
 
-from Numeric import *
+from numpy import *
 
 import pkg_resources
 pkg_resources.require( "bx-python" )

@@ -22,7 +22,7 @@ import cookbook.doc_optparse
 import sys
 import traceback
 
-from Numeric import *
+from numpy import *
 
 import rp.io
 import rp.mapping
