@@ -30,7 +30,7 @@ cdef class StandardModel:
         self.order = order
         self.radix = radix
         self.scores = scores
-        self.scores_len = radix ** ( order + 1 )
+        self.scores_len = <int> ( ( <float> radix ) ** ( order + 1 ) )
 
     def get_order( self ):
         return self.order
@@ -102,7 +102,7 @@ def from_file( f ):
     except:
         raise "Expected 'radix:'"
     # Parse values
-    size = radix ** ( order + 1 )
+    size = <int> ( ( <float> radix ) ** ( order + 1 ) )
     scores = new_real_array( size )
     for i from 0 <= i < size:
         scores[i] = float( f.next() )
