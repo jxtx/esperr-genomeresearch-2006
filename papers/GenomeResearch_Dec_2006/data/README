@@ -1,0 +1,11 @@
+Makefile.example -- Makefile used in building and evaluating encodings
+reg.maf.gz -- Positive training set
+ar.maf.gz -- Neagative training set (random ancestral repeats)
+hg17_known_regulatory.txt -- original intervals use to construct training set
+
+reg_ar.max3wc.ent_agglom.75.mapping.gz -- Mapping resulting from entropy agglomeration (maximum 3 missing data, 75 symbols)
+test_1.063.mapping.gz -- final mapping after search phase
+
+reg.intseqs.gz -- Positive training data translated with test_1.063.mapping
+ar.intseqs.gz -- Negative training data translated with test_1.063.mapping
+

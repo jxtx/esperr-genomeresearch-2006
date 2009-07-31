@@ -1,0 +1,260 @@
+SHELL=bash
+
+default : 
+	echo "No default target"
+
+AUTOSOMES=1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22
+CHROMOSOMES=$(AUTOSOMES) X Y
+
+##
+## Extract training sets that align in all of a set of species, thus 
+## allowing for comparibility between different scores
+##
+
+RP=/home/james/projects/sandbox/python-rp-scores/
+BX=/home/james/projects/bx-python-trunk/scripts/
+MISC=../../scripts
+
+MOD=../ancestral_dists/random_1mb_windows.mod
+
+## ---- Variables one might want to change ----------------------------------
+
+SPECIES=hg17,panTro1,rheMac2,mm7,rn3,canFam2,bosTau2
+
+REG=hg17_known_regulatory.txt
+
+RMSK=/depot/data1/cache/human/hg17/seq/rmsk/
+ALIGN=/depot/data1/cache/human/hg17/align/17way/maf
+
+clean :
+	rm -f *.maf *.col_counts *.adists *.clusters *.mapping
+
+## ---- Scoring ------------------------------------------------------------
+
+MODELS:=tmp
+
+POS=reg.maf
+NEG=ar.maf
+
+#tmp_MAPPING=test_1.097.mapping.no_missing_hmrd
+tmp_MAPPING=test_1.063.mapping
+tmp_ORDER=2
+tmp_MODEL=tree_pruned:N=10,D=0.01
+
+include ../../scoring-common.mk
+
+# ---- Other datasets -----
+
+#SPECIES_FILTER=hg17;mm7;canFam2
+SPECIES_FILTER=hg17
+
+exons.bed : knownGene.txt.gz
+	zcat knownGene.txt.gz | ucsc_gene_table_to_intervals.py -e | randomLines 1000 > $@
+
+exons.maf: $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf)	
+	cat exons.bed \
+	| prefix_lines "hg17." \
+	| ~/projects/bx-python-trunk/scripts/maf_tile_2.py $(SPECIES) chromlen.txt $^ \
+	| maf_chop.py \
+	| $(MISC)/maf_translate_chars.py \
+	| maf_randomize.py `maf_count.py < reg.maf` \
+	> $@	
+
+# Sample of genomic windows
+random_1kb_windows.bed : 
+	$(MISC)/genome_windows.py hg17 1000 < chromlen.txt | randomLines 1000 > $@
+
+all.maf: $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf)	
+	cat random_1kb_windows.bed \
+	| prefix_lines "hg17." \
+	| ~/projects/bx-python-trunk/scripts/maf_tile_2.py $(SPECIES) chromlen.txt $^ \
+	| maf_chop.py \
+	| $(MISC)/maf_translate_chars.py \
+	| maf_randomize.py `maf_count.py < reg.maf` \
+	> $@	
+
+## ---- Reg / AR alignments -------------------------------------------------
+
+#SPECIES_FILTER=hg17;rn3,mm7,oryCun1;canFam2,bosTau1
+
+%_tile.maf : %.bed
+	cat $< \
+	| prefix_lines "hg17." \
+	| ~/projects/bx-python-trunk/scripts/maf_tile_2.py --strand $(SPECIES) chromlen.txt $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf) \
+	| $(MISC)/maf_translate_chars.py \
+	> $@
+
+reg.maf: $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf)	
+	cat $(REG) \
+	| prefix_lines "hg17." \
+	| ~/projects/bx-python-trunk/scripts/maf_tile_2.py $(SPECIES) chromlen.txt $^ \
+	| maf_chop.py \
+	| $(MISC)/maf_translate_chars.py \
+	| $(MISC)/maf_filter_max_wc.py 50 3 \
+	> $@	
+
+AR_BED=hg17_ar_sample.bed
+
+$(AR_BED) : ~/cache/hg17_AR/hum_mus_dog_AR.bed
+	randomLines 5000 < $< > $@
+
+ar.maf: $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf)	
+	cat $(AR_BED) \
+	| prefix_lines "hg17." \
+	| ~/projects/bx-python-trunk/scripts/maf_tile_2.py $(SPECIES) chromlen.txt $^ \
+	| maf_chop.py \
+	| $(MISC)/maf_translate_chars.py \
+	| $(MISC)/maf_filter_max_wc.py 50 3 \
+	| maf_randomize.py `maf_count.py < reg.maf` \
+	> $@
+	
+## ---- Requiring human/mouse/dog -------------------------------------------
+
+#SPECIES_FILTER=hg17;mm7;canFam2
+
+reg.hmd.maf: $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf)	
+	cat $(REG) \
+	| prefix_lines "hg17." \
+	| ~/projects/bx-python-trunk/scripts/maf_tile_2.py `cat ./species` chromlen.txt $^ \
+	| maf_chop.py \
+	| $(MISC)/maf_filter_missing_data.py "$(SPECIES_FILTER)" \
+	| ./maf_translate_chars.py \
+	> $@	
+
+ar.hmd.maf: $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf)	
+	cat $(AR_BED) \
+	| prefix_lines "hg17." \
+	| ~/projects/bx-python-trunk/scripts/maf_tile_2.py `cat ./species` chromlen.txt $^ \
+	| maf_chop.py \
+	| $(MISC)/maf_filter_missing_data.py "$(SPECIES_FILTER)" \
+	| maf_randomize.py `maf_count.py < reg.maf` \
+	| ./maf_translate_chars.py \
+	> $@
+	
+## ---- 5 way style sampling
+
+reg2.maf : $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf)
+	cat $(REG) \
+	| prefix_lines "hg17." \
+	| maf_extract_ranges_indexed.py --chop $^ \
+	| $(MISC)/maf_require_species.py hg17,panTro1\*,rheMac2\*,mm7,rn3\*,oryCun1\*,canFam2,bosTau2\* \
+	| maf_chop.py \
+	> $@
+
+ar2.maf : $(foreach c, $(CHROMOSOMES), ar2_tmp/chr$c.ar.maf)	
+	cat $^ \
+	| maf_chop.py -l 500 \
+	| $(MISC)/maf_require_species.py hg17,panTro1\*,rheMac2\*,mm7,rn3\*,oryCun1\*,canFam2,bosTau2\* \
+	| maf_chop.py \
+	| maf_randomize.py `maf_count.py < reg2.maf` \
+	> $@
+	
+ar2_tmp/%.ar.maf : $(RMSK)/%.fa.out_mus_rat_dog $(ALIGN)/%.maf 
+	./sample_random_ar.py $^ $(SPECIES) > $@
+		
+## ---- REG / AR using intervals from 5way RP --------------------------------
+
+OLD_REG_BED=old_reg.bed
+OLD_AR_BED=old_ar.bed
+
+old_reg.maf: $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf)	
+	cat $(OLD_REG_BED) \
+	| prefix_lines "hg17." \
+	| ~/projects/bx-python-trunk/scripts/maf_tile.py -m `cat ./species` chromlen.txt $^ \
+	> $@
+	## | $(MISC)/maf_filter_missing_data.py hg17,panTro1,rheMac2\;mm7,rn3,oryCun1\;canFam2,bosTau2 \
+	## | ./maf_translate_chars.py \
+	## > $@
+	
+old_ar.maf: $(foreach c, $(CHROMOSOMES), $(ALIGN)/chr$c.maf)	
+	cat $(OLD_AR_BED) \
+	| prefix_lines "hg17." \
+	| ~/projects/bx-python-trunk/scripts/maf_tile.py `cat ./species` chromlen.txt $^ \
+	> $@
+	## | $(MISC)/maf_filter_missing_data.py hg17,panTro1,rheMac2\;mm7,rn3,oryCun1\;canFam2,bosTau2 \
+	## | ./maf_translate_chars.py \
+	## > $@
+	
+## ---- HBBC ----------------------------------------------------------------
+
+hbbc.maf : $(ALIGN)/chr11.maf
+	cat hbbc.ranges \
+	| prefix_lines "hg17.chr11	" \
+    | ~/projects/bx-python-trunk/scripts/maf_tile_2.py `cat ./species` chromlen.txt $^ \
+	| $(MISC)/maf_translate_chars.py \
+    >> $@ 
+
+hbbc2.maf : $(ALIGN)/chr11.maf        
+	cat hbbc.ranges | maf_extract_ranges_indexed.py --src=hg17.chr11 $< \
+	| maf_thread_for_species.py $(SPECIES) \
+	> $@ 
+
+hbbc2.maf : $(ALIGN)/chr11.maf
+	cat hbbc.ranges \
+	| prefix_lines "hg17.chr11	" \
+	| maf_extract_ranges_indexed.py --chop $^ \
+	| $(MISC)/maf_require_species.py hg17,panTro1\*,rheMac2\*,mm7,rn3\*,oryCun1\*,canFam2,bosTau2\* \
+	> $@
+	
+## ---- Reg / AR ancestral dists --------------------------------------------
+
+reg_ar.maf : reg.maf ar.maf
+	cat $^ > $@
+
+encode_dhs_tile.maf : encode_dhs_positive_tile.maf encode_dhs_negative_tile.maf
+	cat $^ > $@
+	
+encode_dhs_all_tile.maf : encode_dhs_positive_tile.maf encode_dhs_negative_all_tile.maf
+	cat $^ > $@
+
+%.col_counts : %.maf
+	cat $^ | $(MISC)/maf_col_counts_all.py > $@
+
+%.max3wc.col_counts : %.maf
+	cat $^ | $(MISC)/maf_col_counts_all.py -m 3 > $@
+
+
+# Build ancestral dists from model / tree
+%.adists : %.col_counts
+	$(MISC)/ancestral_dists.py $(MOD) $(SPECIES) $< > $@
+
+%.clusters : %.adists
+	$(MISC)/entropy_agglomeration.py $< $@ 10
+
+%.ent_agglom.75.mapping : %.adists %.clusters
+	$(MISC)/make_mapping_from_clusters.py $^ 75 > $@
+
+%.ent_agglom.25.mapping : %.adists %.clusters
+	$(MISC)/make_mapping_from_clusters.py $^ 25 > $@
+	
+%.ent_agglom.10.mapping : %.adists %.clusters
+	$(MISC)/make_mapping_from_clusters.py $^ 10 > $@
+	
+# ---- Adapt ----------------------------------------------------------------
+
+$(POS)_$(NEG).%.$(N).adapt : 
+	mkdir -p $@
+	rm -f $@/*
+	$(RP)/rp_adapt_mc.py $(POS).maf $(NEG).maf $@ -f maf -a $(POS)_$(NEG).$*.mapping -o 2 -M tree_pruned:D=.01,N=10
+
+$(POS)_$(NEG).%.$(N).adapt_pbs : 
+	mkdir -p $@
+	rm -f $@/*
+	( cat job_template.pbs; echo rp_adapt_mc.py $(POS).maf $(NEG).maf $@ -f maf -a $(POS)_$(NEG).$*.mapping -o 2 -M tree_pruned:D=.01,N=10 ) > $@.job
+	qsub $@.job
+
+%.seq_gc.top200 : %.table
+	table_filter.py -c chr,start,stop,seq_gc < $< | grep -v NA | sort -n -k 4 | tail -200 > $@
+%.phastCons.top200 : %.table
+	table_filter.py -c chr,start,stop,phastCons < $< | grep -v NA | sort -n -k 4 | tail -200 > $@
+%.F.top200 : %.table
+	table_filter.py -c chr,start,stop,F < $< | grep -v NA | sort -n -k 4 | tail -200 > $@	
+
+%.seq_gc.top$(N) : %.table
+	table_filter.py -c chr,start,stop,seq_gc < $< | grep -v NA | sort -n -k 4 | tail -$(N) > $@
+%.phastCons.top$(N): %.table
+	table_filter.py -c chr,start,stop,phastCons < $< | grep -v NA | sort -n -k 4 | tail -$(N) > $@
+%.F.top$(N): %.table
+	table_filter.py -c chr,start,stop,F < $< | grep -v NA | sort -n -k 4 | tail -$(N) > $@	
+
+.SECONDARY:
