@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.3
+#!/usr/bin/env python2.4
 
 """
 Score a set of alignments (MAF format) using a model
@@ -26,7 +26,7 @@ import cookbook.doc_optparse
 import sys
 import traceback
 
-from Numeric import *
+from numpy import *
 
 import rp.io 
 import rp.mapping
@@ -62,7 +62,7 @@ def score_windows( maf, string, model, out, window, shift, low, high ):
     chrom = rc.src
     if '.' in chrom: chrom = chrom.split('.')[1]
     # Score array
-    scores = array( [ float("nan") ] * len( text ), typecode="f" )
+    scores = array( [ float("nan") ] * len( text ), dtype="f" )
     model.score_positions( string, scores )
     # Build cumulative sum of scores AND of number of good words per window (note: nan!=nan)
     goodwords = equal(scores,scores)

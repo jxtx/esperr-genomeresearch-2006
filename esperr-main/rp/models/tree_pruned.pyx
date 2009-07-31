@@ -120,7 +120,7 @@ cdef to_probs( int radix, Node* node, Node* parent, float discount ):
         if node.vals[i] == 0:
             num_zero = num_zero + 1
         else:
-            total = total + node.vals[i]
+            total = total + ( <int> node.vals[i] )
     # Make probabilities
 #     if num_zero == 0:
 #         # No zero nodes, just straight probabilities
@@ -372,8 +372,14 @@ cdef class Model:
         Score string[start:start+length] under the model. If start/length are not
         specified they default to 0 and the length of the buffer respectively.
         """
-        assert string.typecode() == "i", "String must be int array"
-        assert target.typecode() == "f", "Target must be float array"
+        if hasattr( string, 'typecode' ):
+            assert string.typecode() == "i", "String must be int array"
+        elif hasattr( string, 'dtype' ):
+            assert string.dtype == "i", "String must be int array"
+        if hasattr( target, 'typecode' ):
+            assert target.typecode() == "f", "Target must be float array"
+        if hasattr( target, 'dtype' ):
+            assert target.dtype == "f", "Target must be float array"
         cdef int* buf
         cdef float* t_buf
         cdef int buf_len, t_buf_len

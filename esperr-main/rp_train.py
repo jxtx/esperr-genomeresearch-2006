@@ -15,7 +15,7 @@ import pkg_resources
 pkg_resources.require( "bx-python" )
 
 import array
-import cookbook.doc_optparse
+import bx.cookbook.doc_optparse
 import sys
 import traceback
 
@@ -44,7 +44,7 @@ def main():
 
     # Parse command line
     try:
-        options, args = cookbook.doc_optparse.parse( __doc__ )
+        options, args = bx.cookbook.doc_optparse.parse( __doc__ )
         pos_fname, neg_fname, out_fname = args
         order = int( getattr( options, 'order' ) )
         radix = getattr( options, 'radix' )
@@ -57,7 +57,7 @@ def main():
         else:
             mapping = None
     except:
-        cookbook.doc_optparse.exit()
+        bx.cookbook.doc_optparse.exception()
 
     out = open( out_fname, "w" )
     run( open( pos_fname ), open( neg_fname ), out, format, mapping, radix, order, modname )

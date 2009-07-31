@@ -8,7 +8,7 @@ only agglomerations that join "neighboring" groups in some space.
 from __future__ import division
 import sys
 from numpy import *
-from rpy import *
+# from rpy import *
 
 def read_data( f ):
     """Read a file containing column names, counts, and ancestral distributions"""
@@ -21,14 +21,14 @@ def read_data( f ):
         names.append( fields[0] )
         counts.append( int( fields[1] ) )
         rows.append( map( float, fields[2:] ) )
-    return names, array( counts, typecode="i" ), array( rows, typecode="d" )
+    return names, array( counts, dtype="i" ), array( rows, dtype="d" )
     
 def euclidean_distance( X ):
     """
     Compute euclidean distance matrix between all rows of 'X'
     """
     n, m = X.shape
-    D = zeros( (n,n), typecode="d" )
+    D = zeros( (n,n), dtype="d" )
     for i in range( n ):
         D[i] = sqrt( sum( ( X - X[i] )**2, 1 ) )
         D[i,i] = float( "inf" )
@@ -51,10 +51,11 @@ def row_and_col_min_indexes( X ):
     return row_mins, col_mins
            
 def calc_entropy( p_c ):
-    rval = 0
-    for p in p_c:
-        rval -= p_c * log( p_c )
-    return rval
+    return - sum( p_c * log( p_c ) )
+    #rval = 0
+    #for p in p_c:
+    #    rval -= p_c * log( p_c )
+    #return rval
                 
 def update_entropy( h_prev, p_c, i, j ):
     return h_prev + p_c[i] * log( p_c[i] ) + p_c[j] * log( p_c[j] ) \
@@ -218,7 +219,7 @@ def main():
             print >>out, n_clusters, entropy / log(n_clusters), " ".join( map( str, X_to_clusters ) )
         last_i = i
 
-    if plot:
-        r.dev_off()
+    # if plot:
+    #     r.dev_off()
 
 if __name__ == "__main__": main()

@@ -12,7 +12,7 @@ inplace: setup
 
 setup:
 	mkdir -p target
-	python setup.py build --debug install --install-lib=target --install-scripts=target
+	python2.4 setup.py build --debug install --install-lib=target --install-scripts=target --old-and-unmanageable
 
 # This is currently broken
 

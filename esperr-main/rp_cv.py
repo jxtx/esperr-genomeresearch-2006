@@ -14,7 +14,7 @@ usage: %prog pos_data neg_data [options]
 """
 
 import array
-import cookbook.doc_optparse
+import bx.cookbook.doc_optparse
 import sys
 import traceback
 import time
@@ -59,7 +59,7 @@ def main():
 
     # Parse command line
 
-    options, args = cookbook.doc_optparse.parse( __doc__ )
+    options, args = bx.cookbook.doc_optparse.parse( __doc__ )
 
     #try:
     if 1:

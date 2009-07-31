@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import align.maf
+import bx.align.maf
 import rp.mapping
 import sys
 

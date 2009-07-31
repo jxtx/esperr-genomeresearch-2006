@@ -16,11 +16,11 @@ from __future__ import division
 import pkg_resources
 pkg_resources.require( "bx-python" )
 
-import cookbook.doc_optparse
+import bx.cookbook.doc_optparse
 import sys
 import traceback
 
-from Numeric import *
+from numpy import *
 
 import rp.io
 import rp.mapping
@@ -43,7 +43,7 @@ def run( data_file, model_file, out_file, format, mapping, modname, mingood, min
         if mingood is None and mincols is None:
             score = model.score( string )
         else:
-            scores = array( [ nan ] * len( string ), typecode="f" )
+            scores = array( [ nan ] * len( string ), dtype="f" )
             model.score_positions( string, scores )
             goodwords = equal(scores,scores)
             ngood = sum( goodwords )
@@ -60,7 +60,7 @@ def main():
 
     # Parse command line
     try:
-        options, args = cookbook.doc_optparse.parse( __doc__ )
+        options, args = bx.cookbook.doc_optparse.parse( __doc__ )
         data_fname, model_fname, out_fname = args
         modname = getattr( options, 'model' )
         if modname is None: modname = 'standard'
@@ -73,7 +73,7 @@ def main():
         mincols = getattr( options, 'mincols' )
         if mincols: mincols = int( mincols )
     except:
-        cookbook.doc_optparse.exit()
+        bx.cookbook.doc_optparse.exception()
 
     out = open( out_fname, "w" )
     run( open( data_fname ), open( model_fname ), out, options.format, mapping, modname, mingood, mincols )

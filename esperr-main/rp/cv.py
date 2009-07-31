@@ -16,13 +16,17 @@ import sys
 
 
 class MultiCV( object ):
-    def __init__( self, model_class, data, fold=5, passes=5, loo=False ):
+    def __init__( self, model_class, data, fold=5, passes=5, loo=False, keep_results=False ):
         self.model_class = model_class
         self.data = data
         self.ndata = len( data )
         self.fold = fold
         self.passes = passes
         self.loo = loo
+        self.keep_results = keep_results
+        if keep_results:
+            self.scores = []
+            self.classes = []
     def get_success_rate( self ):
         total = 0
         for c in self.cls:
@@ -84,6 +88,9 @@ class MultiCV( object ):
                     self.cls[i].pos += 1
                 else:
                     self.cls[i].neg += 1
+                if self.keep_results:
+                    self.scores.append( scores )
+                    self.classes.append( ( i, c ) )
 
 class CVClassification( object ):
     def __init__( self ):

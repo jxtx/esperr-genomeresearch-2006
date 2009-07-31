@@ -22,16 +22,16 @@ from __future__ import division
 import pkg_resources
 pkg_resources.require( "bx-python" )
 
-import cookbook.doc_optparse
+import bx.cookbook.doc_optparse
 import os.path
-import random
 import sys
 import time
 import traceback
 
-from Numeric import *
-from cookbook.progress_bar import *
+from numpy import *
+from bx.cookbook.progress_bar import *
 from itertools import *
+import random
 
 import rp.cv
 import rp.io
@@ -108,7 +108,7 @@ def run( ts_fnames, out_dir, format, align_count, atom_mapping, mapping, modname
     atom_counts = zeros( atom_mapping.get_out_size() )
     for string in chain( * training_sets ):
         for val in string:
-            atom_counts[ val ] += 1
+            atom_counts[ int( val ) ] += 1
     can_expand = compress( atom_counts > 10, arange( len( atom_counts ) ) )
 
     # Open merit output
@@ -319,7 +319,7 @@ def main():
 
     # Parse command line
 
-    options, args = cookbook.doc_optparse.parse( __doc__ )
+    options, args = bx.cookbook.doc_optparse.parse( __doc__ )
 
     if 1:
         ts_fnames = args

@@ -16,9 +16,9 @@ usage: %prog tree_mod species_names col_count_file
 
 from __future__ import division
 
-import cookbook
+from bx import cookbook
 import sys
-from Numeric import *
+from numpy import *
 from scipy.linalg import expm
 
 import bx.phylo.newick
