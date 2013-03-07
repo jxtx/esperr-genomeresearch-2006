@@ -3,7 +3,7 @@ def get( name ):
         if ":" in name: name = name.split( ":" )[0]
         return getattr( __import__( "rp.models", globals(), locals(), [ name ] ), name )
     except:
-        raise "Unknown model: '%s'" % name
+        raise Exception( "Unknown model: '%s'" % name )
         
 def train( modname, *args ):
     

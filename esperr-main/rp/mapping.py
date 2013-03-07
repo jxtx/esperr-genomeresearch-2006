@@ -1,1 +1,0 @@
-from bx.seqmapping import *
