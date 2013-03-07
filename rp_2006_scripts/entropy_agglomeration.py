@@ -8,7 +8,6 @@ only agglomerations that join "neighboring" groups in some space.
 from __future__ import division
 import sys
 from numpy import *
-from rpy import *
 
 def read_data( f ):
     """Read a file containing column names, counts, and ancestral distributions"""
@@ -21,7 +20,7 @@ def read_data( f ):
         names.append( fields[0] )
         counts.append( int( fields[1] ) )
         rows.append( map( float, fields[2:] ) )
-    return names, array( counts, typecode="i" ), array( rows, typecode="d" )
+    return names, array( counts, dtype="i" ), array( rows, dtype="d" )
     
 def euclidean_distance( X ):
     """
