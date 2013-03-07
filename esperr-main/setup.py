@@ -1,8 +1,18 @@
 # Automatically download setuptools if not available
-from ez_setup import use_setuptools
+from distribute_setup import use_setuptools
 use_setuptools()
 
 from setuptools import *
+
+
+# Use build_ext from Cython
+command_classes = {}
+try:
+    import Cython.Distutils
+    command_classes['build_ext'] = Cython.Distutils.build_ext
+except:
+    pass
+
 
 gill_code = [ 'pst.c', 'priority_queue.c', 'pfa.c', 'pattern_match.c', 'numrec.c', 'learn_algs.c', 'file_handle.c' ]
 gill_code = [ 'third_party/gill_pst/' + l for l in gill_code ]
@@ -25,6 +35,7 @@ setup( name = "esperr",
                      #Extension( "rp.models.complex_periodic", ["rp/models/complex_periodic.pyx", "rp/models/simple_periodic_core.c"] ),
                     ],
        author="James Taylor",
-       install_requires = "bx-python >= 0.1.0" 
+       install_requires = "bx-python >= 0.1.0",
+       cmdclass = command_classes
 )
 
